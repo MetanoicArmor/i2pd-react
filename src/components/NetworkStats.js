@@ -1,6 +1,7 @@
 import React from 'react';
 import styled from 'styled-components';
 import { Download, Upload, Shield, Wifi, RefreshCw } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const Card = styled.div`
   background-color: ${props => props.theme.colors.surface};
@@ -124,16 +125,18 @@ function NetworkStats({
   onRefresh, 
   isRunning 
 }) {
+  const { t } = useTranslation();
+  
   return (
     <Card>
       <CardHeader>
         <CardTitle>
-          📊 Сетевая статистика
+          📊 {t('Network Statistics')}
         </CardTitle>
         <RefreshButton 
           onClick={onRefresh}
           disabled={!isRunning}
-          title="Обновить статистику"
+          title={t('Refresh statistics')}
         >
           <RefreshCw />
         </RefreshButton>
@@ -145,7 +148,7 @@ function NetworkStats({
             <Download size={20} />
           </StatIcon>
           <StatValue>{bytesReceived}</StatValue>
-          <StatLabel>Получено</StatLabel>
+          <StatLabel>{t('Received')}</StatLabel>
         </StatItem>
         
         <StatItem>
@@ -153,7 +156,7 @@ function NetworkStats({
             <Upload size={20} />
           </StatIcon>
           <StatValue>{bytesSent}</StatValue>
-          <StatLabel>Отправлено</StatLabel>
+          <StatLabel>{t('Sent')}</StatLabel>
         </StatItem>
         
         <StatItem>
@@ -161,7 +164,7 @@ function NetworkStats({
             <Shield size={20} />
           </StatIcon>
           <StatValue>{activeTunnels}</StatValue>
-          <StatLabel>Туннели</StatLabel>
+          <StatLabel>{t('Tunnels')}</StatLabel>
         </StatItem>
         
         <StatItem>
@@ -169,7 +172,7 @@ function NetworkStats({
             <Wifi size={20} />
           </StatIcon>
           <StatValue>{peerCount}</StatValue>
-          <StatLabel>Роутеры</StatLabel>
+          <StatLabel>{t('Routers')}</StatLabel>
         </StatItem>
       </StatsGrid>
     </Card>

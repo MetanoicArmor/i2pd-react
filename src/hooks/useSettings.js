@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { DEFAULT_SETTINGS } from '../constants/settings';
 
 // Хук для управления настройками приложения
 export const useSettings = (electronAPI) => {
+  const { t } = useTranslation();
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -62,7 +64,7 @@ export const useSettings = (electronAPI) => {
 
     setIsSaving(true);
     try {
-      // Сохраняем каждую настройку отдельно
+      // Сохраняем каждую настройку отдельно в electron-store
       for (const [key, value] of Object.entries(newSettings)) {
         try {
           await electronAPI.invoke('set-store-value', key, value);
@@ -70,6 +72,49 @@ export const useSettings = (electronAPI) => {
           console.error(`Ошибка сохранения настройки ${key}:`, error);
           throw error;
         }
+      }
+      
+      // Определяем, какие настройки влияют на демон
+      const daemonSettings = {
+        httpPort: newSettings.httpPort,
+        socksPort: newSettings.socksPort,
+        bandwidth: newSettings.bandwidth,
+        enableIPv6: newSettings.enableIPv6,
+        enableUPnP: newSettings.enableUPnP,
+        logLevel: newSettings.logLevel,
+        enableFloodfill: newSettings.enableFloodfill,
+        enableTransit: newSettings.enableTransit,
+        maxTransitTunnels: newSettings.maxTransitTunnels
+      };
+      
+      // Фильтруем только измененные настройки демона
+      const changedDaemonSettings = {};
+      for (const [key, value] of Object.entries(daemonSettings)) {
+        if (value !== undefined && value !== settings[key]) {
+          changedDaemonSettings[key] = value;
+        }
+      }
+      
+      // Если есть изменения настроек демона, записываем их в конфиг
+      if (Object.keys(changedDaemonSettings).length > 0) {
+        console.log('📝 Записываем изменения настроек в конфиг:', changedDaemonSettings);
+        
+        const configResult = await electronAPI.invoke('write-settings-to-config', changedDaemonSettings);
+        if (!configResult.success) {
+          throw new Error(`Ошибка записи в конфиг: ${configResult.error}`);
+        }
+        
+        console.log('✅ Настройки успешно записаны в конфиг');
+        
+        // Проверяем, запущен ли демон
+        const statusResult = await electronAPI.invoke('check-daemon-status');
+        if (statusResult.isRunning) {
+          console.log('🔄 Демон запущен, требуется перезапуск для применения настроек');
+        } else {
+          console.log('ℹ️ Демон не запущен, настройки будут применены при следующем запуске');
+        }
+      } else {
+        console.log('ℹ️ Нет изменений настроек демона, конфиг не обновляется');
       }
       
       setSettings(newSettings);
@@ -80,7 +125,7 @@ export const useSettings = (electronAPI) => {
     } finally {
       setIsSaving(false);
     }
-  }, [electronAPI]);
+  }, [electronAPI, settings]);
 
   // Обновление отдельной настройки
   const updateSetting = useCallback(async (key, value) => {
@@ -99,29 +144,29 @@ export const useSettings = (electronAPI) => {
     
     // Валидация портов
     if (settingsToValidate.httpPort < 1024 || settingsToValidate.httpPort > 65535) {
-      errors.httpPort = 'HTTP порт должен быть в диапазоне 1024-65535';
+      errors.httpPort = t('HTTP port must be in range 1024-65535');
     }
     
     if (settingsToValidate.socksPort < 1024 || settingsToValidate.socksPort > 65535) {
-      errors.socksPort = 'SOCKS порт должен быть в диапазоне 1024-65535';
+      errors.socksPort = t('SOCKS port must be in range 1024-65535');
     }
     
     if (settingsToValidate.httpPort === settingsToValidate.socksPort) {
-      errors.socksPort = 'SOCKS порт должен отличаться от HTTP порта';
+      errors.socksPort = t('SOCKS port must be different from HTTP port');
     }
     
     // Валидация интервала обновления
     if (settingsToValidate.updateInterval < 1 || settingsToValidate.updateInterval > 60) {
-      errors.updateInterval = 'Интервал обновления должен быть от 1 до 60 секунд';
+      errors.updateInterval = t('Update interval must be between 1 and 60 seconds');
     }
     
     // Валидация максимальных туннелей
     if (settingsToValidate.maxTransitTunnels < 100 || settingsToValidate.maxTransitTunnels > 50000) {
-      errors.maxTransitTunnels = 'Максимальное количество туннелей должно быть от 100 до 50000';
+      errors.maxTransitTunnels = t('Maximum tunnels must be between 100 and 50000');
     }
     
     return errors;
-  }, []);
+  }, [t]);
 
   // Загрузка настроек при инициализации
   useEffect(() => {

@@ -1,6 +1,7 @@
 import React from 'react';
 import styled from 'styled-components';
 import { Trash2, FileText } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const Container = styled.div`
   display: flex;
@@ -155,6 +156,8 @@ const EmptyDescription = styled.div`
 `;
 
 function LogsViewer({ logs, onClear }) {
+  const { t } = useTranslation();
+  
   const formatTime = (timestamp) => {
     return timestamp.toLocaleTimeString('ru-RU', { 
       hour: '2-digit', 
@@ -167,12 +170,12 @@ function LogsViewer({ logs, onClear }) {
     <Container>
       <Header>
         <Title>
-          📋 Логи системы
+          📋 {t('System Logs')}
         </Title>
         {logs.length > 0 && (
           <ClearButton onClick={onClear}>
             <Trash2 />
-            Очистить
+            {t('Clear')}
           </ClearButton>
         )}
       </Header>
@@ -183,9 +186,9 @@ function LogsViewer({ logs, onClear }) {
             <EmptyIcon>
               <FileText size={48} />
             </EmptyIcon>
-            <EmptyTitle>Система готова к работе</EmptyTitle>
+            <EmptyTitle>{t('System ready to work')}</EmptyTitle>
             <EmptyDescription>
-              Логи появятся при запуске демона
+              {t('Logs will appear when daemon starts')}
             </EmptyDescription>
           </EmptyState>
         ) : (

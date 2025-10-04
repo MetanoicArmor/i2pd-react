@@ -236,7 +236,7 @@ const NetworkMonitoring = ({
         <RefreshButton 
           onClick={handleRefresh}
           disabled={!isRunning || isLoading}
-          title="Обновить статистику"
+          title={t('Refresh statistics')}
         >
           {isLoading ? <LoadingSpinner /> : <RefreshCw />}
         </RefreshButton>

@@ -2,13 +2,12 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useSettings } from '../hooks/useSettings';
 import { 
-  SETTINGS_CATEGORIES, 
-  BANDWIDTH_OPTIONS, 
-  LOG_LEVEL_OPTIONS, 
-  LANGUAGE_OPTIONS, 
-  THEME_OPTIONS, 
-  UPDATE_INTERVAL_OPTIONS 
+  SETTINGS_CATEGORIES
 } from '../constants/settings';
+import { useTranslatedConstants } from '../utils/translatedConstants';
+import ConfigManagement from './ConfigManagement';
+import { useTranslation } from 'react-i18next';
+import { AlertCircle } from 'lucide-react';
 
 // Стилизованные компоненты
 const ModalOverlay = styled.div`
@@ -17,8 +16,7 @@ const ModalOverlay = styled.div`
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(10px);
+  background-color: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -26,21 +24,22 @@ const ModalOverlay = styled.div`
 `;
 
 const Modal = styled.div`
-  background: ${props => props.theme.colors.surface};
-  border-radius: 16px;
-  padding: 0;
-  max-width: 800px;
+  background-color: ${props => props.theme.colors.surface};
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   width: 90%;
-  max-height: 80vh;
-  border: 1px solid ${props => props.theme.colors.border};
+  max-width: 800px;
+  max-height: 90vh;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 `;
 
 const ModalHeader = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24px 24px 0 24px;
+  padding: 20px 24px;
   border-bottom: 1px solid ${props => props.theme.colors.border};
 `;
 
@@ -54,16 +53,28 @@ const ModalTitle = styled.h2`
 const ModalCloseButton = styled.button`
   background: none;
   border: none;
+  font-size: 20px;
   color: ${props => props.theme.colors.textSecondary};
   cursor: pointer;
-  padding: 8px;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-
+  padding: 4px;
+  border-radius: 4px;
+  
   &:hover {
-    background: ${props => props.theme.colors.surface};
-    color: ${props => props.theme.colors.text};
+    background-color: ${props => props.theme.colors.border};
   }
+`;
+
+const Warning = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background-color: ${props => props.theme.colors.warning || '#FFF3CD'};
+  border: 1px solid ${props => props.theme.colors.warningBorder || '#FFEAA7'};
+  border-radius: 8px;
+  margin-bottom: 16px;
+  color: ${props => props.theme.colors.warningText || '#856404'};
+  font-size: 14px;
 `;
 
 const TabContainer = styled.div`
@@ -73,25 +84,25 @@ const TabContainer = styled.div`
 
 const Tab = styled.button`
   flex: 1;
-  padding: 16px 24px;
+  padding: 12px 16px;
   border: none;
-  background: ${props => props.$active ? props.theme.colors.surface : 'transparent'};
+  background: none;
   color: ${props => props.$active ? props.theme.colors.primary : props.theme.colors.textSecondary};
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
   border-bottom: 2px solid ${props => props.$active ? props.theme.colors.primary : 'transparent'};
-
+  transition: all 0.2s ease;
+  
   &:hover {
-    background: ${props => props.theme.colors.surface};
     color: ${props => props.theme.colors.text};
+    background-color: ${props => props.theme.colors.background};
   }
 `;
 
 const TabContent = styled.div`
+  flex: 1;
   padding: 24px;
-  max-height: 400px;
   overflow-y: auto;
 `;
 
@@ -109,57 +120,47 @@ const Label = styled.label`
 
 const Input = styled.input`
   width: 100%;
-  padding: 12px 16px;
+  padding: 8px 12px;
   border: 1px solid ${props => props.theme.colors.border};
-  border-radius: 8px;
-  background: ${props => props.theme.colors.surface};
+  border-radius: 6px;
+  background-color: ${props => props.theme.colors.background};
   color: ${props => props.theme.colors.text};
   font-size: 14px;
-  transition: all 0.2s ease;
-
+  
   &:focus {
     outline: none;
     border-color: ${props => props.theme.colors.primary};
-    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
-  }
-
-  &:invalid {
-    border-color: ${props => props.theme.colors.error};
   }
 `;
 
 const Select = styled.select`
   width: 100%;
-  padding: 12px 16px;
+  padding: 8px 12px;
   border: 1px solid ${props => props.theme.colors.border};
-  border-radius: 8px;
-  background: ${props => props.theme.colors.surface};
+  border-radius: 6px;
+  background-color: ${props => props.theme.colors.background};
   color: ${props => props.theme.colors.text};
   font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-
+  
   &:focus {
     outline: none;
     border-color: ${props => props.theme.colors.primary};
-    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
   }
 `;
 
 const CheckboxLabel = styled.label`
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   font-size: 14px;
+  font-weight: 500;
   color: ${props => props.theme.colors.text};
   cursor: pointer;
-  padding: 8px 0;
 `;
 
-const Checkbox = styled.input.attrs({ type: 'checkbox' })`
-  width: 18px;
-  height: 18px;
-  accent-color: ${props => props.theme.colors.primary};
+const Checkbox = styled.input`
+  width: 16px;
+  height: 16px;
 `;
 
 const Description = styled.div`
@@ -168,67 +169,66 @@ const Description = styled.div`
   margin-top: 4px;
 `;
 
-const ErrorText = styled.div`
-  font-size: 12px;
-  color: ${props => props.theme.colors.error};
-  margin-top: 4px;
-`;
-
 const ModalFooter = styled.div`
   display: flex;
-  gap: 12px;
   justify-content: flex-end;
-  padding: 24px;
+  gap: 12px;
+  padding: 20px 24px;
   border-top: 1px solid ${props => props.theme.colors.border};
 `;
 
-const Button = styled.button`
-  padding: 12px 24px;
+const ResetButton = styled.button`
+  padding: 8px 16px;
+  border: 1px solid ${props => props.theme.colors.border};
+  border-radius: 6px;
+  background-color: transparent;
+  color: ${props => props.theme.colors.textSecondary};
+  font-size: 14px;
+  cursor: pointer;
+  
+  &:hover {
+    background-color: ${props => props.theme.colors.border};
+  }
+`;
+
+const CancelButton = styled.button`
+  padding: 8px 16px;
+  border: 1px solid ${props => props.theme.colors.border};
+  border-radius: 6px;
+  background-color: transparent;
+  color: ${props => props.theme.colors.textSecondary};
+  font-size: 14px;
+  cursor: pointer;
+  
+  &:hover {
+    background-color: ${props => props.theme.colors.border};
+  }
+`;
+
+const SaveButton = styled.button`
+  padding: 8px 16px;
   border: none;
-  border-radius: 12px;
+  border-radius: 6px;
+  background-color: ${props => props.theme.colors.primary};
+  color: white;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
-
+  
+  &:hover {
+    background-color: ${props => props.theme.colors.primary}dd;
+  }
+  
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
 `;
 
-const CancelButton = styled(Button)`
-  border: 1px solid ${props => props.theme.colors.border};
-  background-color: transparent;
-  color: ${props => props.theme.colors.text};
-
-  &:hover {
-    background-color: ${props => props.theme.colors.surface};
-    border-color: ${props => props.theme.colors.textSecondary};
-  }
-`;
-
-const SaveButton = styled(Button)`
-  background: ${props => props.theme.colors.primary};
-  color: white;
-
-  &:hover {
-    opacity: 0.8;
-  }
-`;
-
-const ResetButton = styled(Button)`
-  background: ${props => props.theme.colors.warning};
-  color: white;
-
-  &:hover {
-    opacity: 0.8;
-  }
-`;
-
 // Компонент настроек
-// Можно пробросить наружные настройки/сохранение, чтобы использовать один и тот же хук из App
 const SettingsModal = ({ isOpen, onClose, electronAPI, onSaved, settings: extSettings, saveSettings: extSaveSettings, validateSettings: extValidateSettings }) => {
+  const { t } = useTranslation();
+  const translatedConstants = useTranslatedConstants();
   const [activeTab, setActiveTab] = useState(SETTINGS_CATEGORIES.GENERAL);
   const [localSettings, setLocalSettings] = useState({});
   const [errors, setErrors] = useState({});
@@ -249,41 +249,78 @@ const SettingsModal = ({ isOpen, onClose, electronAPI, onSaved, settings: extSet
     }
   }, [isOpen, settings]);
 
-  // Обработка изменений
   const handleSettingChange = (key, value) => {
-    const newSettings = { ...localSettings, [key]: value };
-    setLocalSettings(newSettings);
+    setLocalSettings(prev => ({ ...prev, [key]: value }));
     
     // Валидация
-    const validationErrors = validateSettings(newSettings);
-    setErrors(validationErrors);
+    if (validateSettings) {
+      const validation = validateSettings({ ...localSettings, [key]: value });
+      if (validation && validation[key]) {
+        setErrors(prev => ({ ...prev, [key]: validation[key] }));
+      } else {
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors[key];
+          return newErrors;
+        });
+      }
+    }
   };
 
-  // Сохранение настроек
   const handleSave = async () => {
-    const validationErrors = validateSettings(localSettings);
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      return;
-    }
-
-    const success = await saveSettings(localSettings);
-    if (success) {
-      try {
-        if (typeof onSaved === 'function') {
-          await onSaved(localSettings);
+    try {
+      const success = await saveSettings(localSettings);
+      if (success) {
+        onSaved && onSaved(localSettings);
+        
+        // Проверяем, есть ли изменения настроек демона
+        const daemonSettings = ['httpPort', 'socksPort', 'bandwidth', 'enableIPv6', 'enableUPnP', 'logLevel', 'enableFloodfill', 'enableTransit', 'maxTransitTunnels'];
+        const hasDaemonChanges = daemonSettings.some(key => localSettings[key] !== settings[key]);
+        
+        if (hasDaemonChanges && electronAPI) {
+          // Проверяем статус демона
+          const statusResult = await electronAPI.invoke('check-daemon-status');
+          if (statusResult.isRunning) {
+            // Показываем диалог с предложением перезапустить демон
+            const shouldRestart = window.confirm(t('Settings require daemon restart to take effect. Restart daemon now?'));
+            if (shouldRestart) {
+              try {
+                console.log('🔄 Перезапускаем демон...');
+                await electronAPI.invoke('stop-daemon');
+                console.log('⏳ Ждем остановки демона...');
+                
+                // Ждем остановки демона
+                let attempts = 0;
+                while (attempts < 10) {
+                  const checkResult = await electronAPI.invoke('check-daemon-status');
+                  if (!checkResult.isRunning) {
+                    break;
+                  }
+                  await new Promise(resolve => setTimeout(resolve, 1000));
+                  attempts++;
+                }
+                
+                console.log('🚀 Запускаем демон с новыми настройками...');
+                await electronAPI.invoke('start-daemon');
+                console.log('✅ Демон перезапущен с новыми настройками');
+              } catch (error) {
+                console.error('❌ Ошибка перезапуска демона:', error);
+                alert(t('Failed to restart daemon. Please restart manually.'));
+              }
+            }
+          }
         }
-      } catch (_) {}
-      onClose();
+        
+        onClose();
+      }
+    } catch (error) {
+      console.error('Error saving settings:', error);
     }
   };
 
-  // Сброс настроек
-  const handleReset = async () => {
-    if (window.confirm('Вы уверены, что хотите сбросить все настройки к значениям по умолчанию?')) {
-      await resetSettings();
-      onClose();
-    }
+  const handleReset = () => {
+    setLocalSettings(settings);
+    setErrors({});
   };
 
   if (!isOpen) return null;
@@ -292,7 +329,7 @@ const SettingsModal = ({ isOpen, onClose, electronAPI, onSaved, settings: extSet
     <ModalOverlay onClick={onClose}>
       <Modal onClick={(e) => e.stopPropagation()}>
         <ModalHeader>
-          <ModalTitle>Настройки</ModalTitle>
+          <ModalTitle>{t('Settings')}</ModalTitle>
           <ModalCloseButton onClick={onClose}>✕</ModalCloseButton>
         </ModalHeader>
 
@@ -301,25 +338,31 @@ const SettingsModal = ({ isOpen, onClose, electronAPI, onSaved, settings: extSet
             $active={activeTab === SETTINGS_CATEGORIES.GENERAL}
             onClick={() => setActiveTab(SETTINGS_CATEGORIES.GENERAL)}
           >
-            Общие
+            {t('General')}
           </Tab>
           <Tab 
             $active={activeTab === SETTINGS_CATEGORIES.NETWORK}
             onClick={() => setActiveTab(SETTINGS_CATEGORIES.NETWORK)}
           >
-            Сеть
+            {t('Network')}
           </Tab>
           <Tab 
             $active={activeTab === SETTINGS_CATEGORIES.ADVANCED}
             onClick={() => setActiveTab(SETTINGS_CATEGORIES.ADVANCED)}
           >
-            Продвинутые
+            {t('Advanced')}
           </Tab>
           <Tab 
             $active={activeTab === SETTINGS_CATEGORIES.APPEARANCE}
             onClick={() => setActiveTab(SETTINGS_CATEGORIES.APPEARANCE)}
           >
-            Внешний вид
+            {t('Appearance')}
+          </Tab>
+          <Tab 
+            $active={activeTab === SETTINGS_CATEGORIES.CONFIG}
+            onClick={() => setActiveTab(SETTINGS_CATEGORIES.CONFIG)}
+          >
+            {t('Config')}
           </Tab>
         </TabContainer>
 
@@ -329,65 +372,70 @@ const SettingsModal = ({ isOpen, onClose, electronAPI, onSaved, settings: extSet
               <FormGroup>
                 <CheckboxLabel>
                   <Checkbox
+                    type="checkbox"
                     checked={localSettings.autoStartDaemon || false}
                     onChange={(e) => handleSettingChange('autoStartDaemon', e.target.checked)}
                   />
-                  Автозапуск демона при старте приложения
+                  {t('Auto-start daemon on app launch')}
                 </CheckboxLabel>
                 <Description>
-                  Демон будет автоматически запускаться при открытии приложения
+                  {t('Daemon will automatically start when opening the app')}
                 </Description>
               </FormGroup>
 
               <FormGroup>
                 <CheckboxLabel>
                   <Checkbox
+                    type="checkbox"
                     checked={localSettings.startMinimized || false}
                     onChange={(e) => handleSettingChange('startMinimized', e.target.checked)}
                   />
-                  Запуск в свернутом виде
+                  {t('Start minimized')}
                 </CheckboxLabel>
                 <Description>
-                  Приложение будет запускаться свернутым в трей
+                  {t('App will start minimized to tray')}
                 </Description>
               </FormGroup>
 
               <FormGroup>
                 <CheckboxLabel>
                   <Checkbox
+                    type="checkbox"
                     checked={localSettings.minimizeToTray || false}
                     onChange={(e) => handleSettingChange('minimizeToTray', e.target.checked)}
                   />
-                  Сворачивать в трей
+                  {t('Minimize to tray')}
                 </CheckboxLabel>
                 <Description>
-                  При сворачивании окно будет скрываться в системный трей
+                  {t('When minimizing, window will hide to system tray')}
                 </Description>
               </FormGroup>
 
               <FormGroup>
                 <CheckboxLabel>
                   <Checkbox
+                    type="checkbox"
                     checked={localSettings.closeToTray || false}
                     onChange={(e) => handleSettingChange('closeToTray', e.target.checked)}
                   />
-                  Закрывать в трей
+                  {t('Close to tray')}
                 </CheckboxLabel>
                 <Description>
-                  При закрытии окна приложение будет скрываться в трей вместо завершения
+                  {t('When closing window, app will hide to tray instead of quitting')}
                 </Description>
               </FormGroup>
 
               <FormGroup>
                 <CheckboxLabel>
                   <Checkbox
+                    type="checkbox"
                     checked={localSettings.hideFromDock || false}
                     onChange={(e) => handleSettingChange('hideFromDock', e.target.checked)}
                   />
-                  Скрыть из Dock (macOS)
+                  {t('Hide from Dock (macOS)')}
                 </CheckboxLabel>
                 <Description>
-                  Приложение не будет отображаться в Dock на macOS
+                  {t('App will not be displayed in Dock on macOS')}
                 </Description>
               </FormGroup>
             </>
@@ -396,75 +444,75 @@ const SettingsModal = ({ isOpen, onClose, electronAPI, onSaved, settings: extSet
           {activeTab === SETTINGS_CATEGORIES.NETWORK && (
             <>
               <FormGroup>
-                <Label>HTTP прокси порт</Label>
+                <Label>{t('HTTP Proxy Port')}</Label>
                 <Input
                   type="number"
-                  min="1024"
-                  max="65535"
                   value={localSettings.httpPort || 4444}
                   onChange={(e) => handleSettingChange('httpPort', parseInt(e.target.value))}
-                />
-                {errors.httpPort && <ErrorText>{errors.httpPort}</ErrorText>}
-                <Description>
-                  Порт для HTTP прокси (по умолчанию: 4444)
-                </Description>
-              </FormGroup>
-
-              <FormGroup>
-                <Label>SOCKS прокси порт</Label>
-                <Input
-                  type="number"
                   min="1024"
                   max="65535"
-                  value={localSettings.socksPort || 4447}
-                  onChange={(e) => handleSettingChange('socksPort', parseInt(e.target.value))}
                 />
-                {errors.socksPort && <ErrorText>{errors.socksPort}</ErrorText>}
                 <Description>
-                  Порт для SOCKS прокси (по умолчанию: 4447)
+                  {t('Port for HTTP proxy (default: 4444)')}
                 </Description>
               </FormGroup>
 
               <FormGroup>
-                <Label>Пропускная способность</Label>
+                <Label>{t('SOCKS Proxy Port')}</Label>
+                <Input
+                  type="number"
+                  value={localSettings.socksPort || 4447}
+                  onChange={(e) => handleSettingChange('socksPort', parseInt(e.target.value))}
+                  min="1024"
+                  max="65535"
+                />
+                <Description>
+                  {t('Port for SOCKS proxy (default: 4447)')}
+                </Description>
+              </FormGroup>
+
+              <FormGroup>
+                <Label>{t('Bandwidth')}</Label>
                 <Select
                   value={localSettings.bandwidth || 'L'}
                   onChange={(e) => handleSettingChange('bandwidth', e.target.value)}
                 >
-                  {BANDWIDTH_OPTIONS.map(option => (
+                  {translatedConstants.bandwidthOptions.map(option => (
                     <option key={option.value} value={option.value}>
-                      {option.label} - {option.description}
+                      {option.label}
                     </option>
                   ))}
                 </Select>
                 <Description>
-                  Ограничение пропускной способности узла
+                  {t('Node bandwidth limit')}
                 </Description>
               </FormGroup>
 
               <FormGroup>
                 <CheckboxLabel>
                   <Checkbox
+                    type="checkbox"
                     checked={localSettings.enableIPv6 || false}
                     onChange={(e) => handleSettingChange('enableIPv6', e.target.checked)}
                   />
-                  Включить IPv6
+                  {t('Enable IPv6')}
                 </CheckboxLabel>
                 <Description>
-                  Разрешить подключения через IPv6
+                  {t('Allow connections via IPv6')}
                 </Description>
               </FormGroup>
 
               <FormGroup>
                 <CheckboxLabel>
                   <Checkbox
+                    type="checkbox"
                     checked={localSettings.enableUPnP || false}
                     onChange={(e) => handleSettingChange('enableUPnP', e.target.checked)}
                   />
-                  Включить UPnP
+                  {t('Enable UPnP')}
                 </CheckboxLabel>
                 <Description>
-                  Автоматическое проброс портов через UPnP
+                  {t('Automatically configure router port forwarding')}
                 </Description>
               </FormGroup>
             </>
@@ -473,91 +521,89 @@ const SettingsModal = ({ isOpen, onClose, electronAPI, onSaved, settings: extSet
           {activeTab === SETTINGS_CATEGORIES.ADVANCED && (
             <>
               <FormGroup>
-                <Label>Уровень логирования</Label>
+                <Label>{t('Log Level')}</Label>
                 <Select
                   value={localSettings.logLevel || 'info'}
                   onChange={(e) => handleSettingChange('logLevel', e.target.value)}
                 >
-                  {LOG_LEVEL_OPTIONS.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label} - {option.description}
-                    </option>
-                  ))}
-                </Select>
-                <Description>
-                  Детализация сообщений в логах
-                </Description>
-              </FormGroup>
-
-              <FormGroup>
-                <Label>Интервал обновления статистики (секунды)</Label>
-                <Select
-                  value={localSettings.updateInterval || 5}
-                  onChange={(e) => handleSettingChange('updateInterval', parseInt(e.target.value))}
-                >
-                  {UPDATE_INTERVAL_OPTIONS.map(option => (
+                  {translatedConstants.logLevelOptions.map(option => (
                     <option key={option.value} value={option.value}>
                       {option.label}
                     </option>
                   ))}
                 </Select>
-                {errors.updateInterval && <ErrorText>{errors.updateInterval}</ErrorText>}
                 <Description>
-                  Как часто обновлять статистику сети
+                  {t('Minimum log level to display')}
+                </Description>
+              </FormGroup>
+
+              <FormGroup>
+                <Label>{t('Update Interval')}</Label>
+                <Input
+                  type="number"
+                  value={localSettings.updateInterval || 5}
+                  onChange={(e) => handleSettingChange('updateInterval', parseInt(e.target.value))}
+                  min="1"
+                  max="60"
+                />
+                <Description>
+                  {t('Network statistics update interval (seconds)')}
                 </Description>
               </FormGroup>
 
               <FormGroup>
                 <CheckboxLabel>
                   <Checkbox
+                    type="checkbox"
                     checked={localSettings.autoClearLogs || false}
                     onChange={(e) => handleSettingChange('autoClearLogs', e.target.checked)}
                   />
-                  Автоочистка логов
+                  {t('Auto-clear logs')}
                 </CheckboxLabel>
                 <Description>
-                  Автоматически очищать старые записи в логах
+                  {t('Automatically clear old log entries')}
                 </Description>
               </FormGroup>
 
               <FormGroup>
                 <CheckboxLabel>
                   <Checkbox
+                    type="checkbox"
                     checked={localSettings.enableFloodfill || false}
                     onChange={(e) => handleSettingChange('enableFloodfill', e.target.checked)}
                   />
-                  Режим Floodfill
+                  {t('Enable Floodfill')}
                 </CheckboxLabel>
                 <Description>
-                  Включить режим floodfill (требует больше ресурсов)
+                  {t('Participate in network floodfill')}
                 </Description>
               </FormGroup>
 
               <FormGroup>
                 <CheckboxLabel>
                   <Checkbox
-                    checked={localSettings.enableTransit !== false}
+                    type="checkbox"
+                    checked={localSettings.enableTransit || false}
                     onChange={(e) => handleSettingChange('enableTransit', e.target.checked)}
                   />
-                  Разрешить транзитный трафик
+                  {t('Enable Transit')}
                 </CheckboxLabel>
                 <Description>
-                  Узел будет передавать трафик других пользователей
+                  {t('Allow transit traffic through this router')}
                 </Description>
               </FormGroup>
 
               <FormGroup>
-                <Label>Максимальное количество транзитных туннелей</Label>
+                <Label>{t('Max Transit Tunnels')}</Label>
                 <Input
                   type="number"
-                  min="100"
-                  max="50000"
-                  value={localSettings.maxTransitTunnels || 10000}
+                  value={localSettings.maxTransitTunnels || 5}
                   onChange={(e) => handleSettingChange('maxTransitTunnels', parseInt(e.target.value))}
+                  min="0"
+                  max="50"
                 />
-                {errors.maxTransitTunnels && <ErrorText>{errors.maxTransitTunnels}</ErrorText>}
                 <Description>
-                  Максимальное количество одновременных транзитных туннелей
+                  {t('Maximum number of transit tunnels')}
                 </Description>
               </FormGroup>
             </>
@@ -566,77 +612,83 @@ const SettingsModal = ({ isOpen, onClose, electronAPI, onSaved, settings: extSet
           {activeTab === SETTINGS_CATEGORIES.APPEARANCE && (
             <>
               <FormGroup>
-                <Label>Тема</Label>
+                <Label>{t('Theme')}</Label>
                 <Select
-                  value={localSettings.theme || 'dark'}
+                  value={localSettings.theme || 'system'}
                   onChange={(e) => handleSettingChange('theme', e.target.value)}
                 >
-                  {THEME_OPTIONS.map(option => (
+                  {translatedConstants.themeOptions.map(option => (
                     <option key={option.value} value={option.value}>
                       {option.label}
                     </option>
                   ))}
                 </Select>
                 <Description>
-                  Цветовая схема интерфейса
+                  {t('Application color scheme')}
                 </Description>
               </FormGroup>
 
               <FormGroup>
-                <Label>Язык</Label>
+                <Label>{t('Language')}</Label>
                 <Select
-                  value={localSettings.language || 'ru'}
+                  value={localSettings.language || 'en'}
                   onChange={(e) => handleSettingChange('language', e.target.value)}
                 >
-                  {LANGUAGE_OPTIONS.map(option => (
+                  {translatedConstants.languageOptions.map(option => (
                     <option key={option.value} value={option.value}>
                       {option.label}
                     </option>
                   ))}
                 </Select>
                 <Description>
-                  Язык интерфейса приложения (применяется сразу)
+                  {t('Application interface language')}
                 </Description>
               </FormGroup>
 
               <FormGroup>
                 <CheckboxLabel>
                   <Checkbox
+                    type="checkbox"
                     checked={localSettings.showNotifications !== false}
                     onChange={(e) => handleSettingChange('showNotifications', e.target.checked)}
                   />
-                  Показывать уведомления
+                  {t('Show Notifications')}
                 </CheckboxLabel>
                 <Description>
-                  Отображать системные уведомления о событиях
+                  {t('Display system notifications')}
                 </Description>
               </FormGroup>
 
               <FormGroup>
                 <CheckboxLabel>
                   <Checkbox
+                    type="checkbox"
                     checked={localSettings.enableAnimations !== false}
                     onChange={(e) => handleSettingChange('enableAnimations', e.target.checked)}
                   />
-                  Включить анимации
+                  {t('Enable Animations')}
                 </CheckboxLabel>
                 <Description>
-                  Плавные переходы и анимации в интерфейсе
+                  {t('Smooth transitions and animations in interface')}
                 </Description>
               </FormGroup>
             </>
+          )}
+
+          {activeTab === SETTINGS_CATEGORIES.CONFIG && (
+            <ConfigManagement electronAPI={electronAPI} />
           )}
         </TabContent>
 
         <ModalFooter>
           <ResetButton onClick={handleReset}>
-            Сбросить
+            {t('Reset')}
           </ResetButton>
           <CancelButton onClick={onClose}>
-            Отмена
+            {t('Cancel')}
           </CancelButton>
           <SaveButton onClick={handleSave} disabled={isSaving}>
-            {isSaving ? 'Сохранение...' : 'Сохранить'}
+            {isSaving ? t('Saving...') : t('Save')}
           </SaveButton>
         </ModalFooter>
       </Modal>

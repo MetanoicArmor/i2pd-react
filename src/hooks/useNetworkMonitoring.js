@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { NetworkStatsService } from '../services/NetworkStatsService';
 
 // Хук для управления мониторингом сети
@@ -8,6 +9,7 @@ export const useNetworkMonitoring = (
   isDaemonRunning = false,
   refreshIntervalSec = 10
 ) => {
+  const { t } = useTranslation();
   const [stats, setStats] = useState({
     // Основная статистика
     bytesReceived: '0 B',
@@ -124,7 +126,7 @@ export const useNetworkMonitoring = (
       setError(null);
     } catch (error) {
       console.error('Ошибка обновления статистики:', error);
-      setError('Не удалось получить статистику');
+      setError(t('Failed to get statistics'));
       // Не используем mock данные при ошибке в продакшене
     } finally {
       setIsLoading(false);

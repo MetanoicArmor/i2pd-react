@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog, shell, Menu, Tray, nativeImage } = require('electron');
 const http = require('http');
 const path = require('path');
+const os = require('os');
 const { spawn, exec } = require('child_process');
 const fs = require('fs');
 const Store = require('electron-store');
@@ -808,6 +809,242 @@ registerHandler('set-window-theme', (_event, theme) => {
     return { success: false, error: e.message };
   }
 });
+// Функция для получения пути к конфигурационной директории i2pd
+function getI2pdConfigDir() {
+  const homeDir = os.homedir();
+  
+  switch (process.platform) {
+    case 'darwin': // macOS
+      return path.join(homeDir, '.i2pd');
+    case 'win32': // Windows
+      return path.join(homeDir, 'AppData', 'Roaming', 'i2pd');
+    case 'linux': // Linux
+      return path.join(homeDir, '.i2pd');
+    default:
+      return path.join(homeDir, '.i2pd');
+  }
+}
+
+// Функция для инициализации конфигурационных файлов при первом запуске
+async function initializeI2pdConfig() {
+  try {
+    const configDir = getI2pdConfigDir();
+    const appDir = __dirname;
+    
+    // Создаем директорию конфигов, если её нет
+    if (!fs.existsSync(configDir)) {
+      fs.mkdirSync(configDir, { recursive: true });
+      console.log(`📁 Создана директория конфигов: ${configDir}`);
+    }
+    
+    // Копируем файлы из папки приложения в конфигурационную директорию
+    const configFiles = ['i2pd.conf', 'tunnels.conf', 'subscriptions.txt'];
+    
+    for (const fileName of configFiles) {
+      const sourcePath = path.join(appDir, fileName);
+      const targetPath = path.join(configDir, fileName);
+      
+      // Копируем файл только если его нет в целевой директории
+      if (fs.existsSync(sourcePath) && !fs.existsSync(targetPath)) {
+        fs.copyFileSync(sourcePath, targetPath);
+        console.log(`📄 Скопирован файл: ${fileName}`);
+      }
+    }
+    
+    return { success: true, configDir };
+  } catch (error) {
+    console.error('❌ Ошибка инициализации конфигов:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// IPC: получение директории конфигов i2pd
+registerHandler('get-i2pd-config-dir', async () => {
+  try {
+    const configDir = getI2pdConfigDir();
+    return { success: true, configDir };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// IPC: чтение конфигурационного файла
+registerHandler('read-config-file', async (event, fileName) => {
+  try {
+    const configDir = getI2pdConfigDir();
+    const filePath = path.join(configDir, fileName);
+    
+    if (!fs.existsSync(filePath)) {
+      return { success: false, error: `Файл ${fileName} не найден` };
+    }
+    
+    const content = fs.readFileSync(filePath, 'utf8');
+    return { success: true, content };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// IPC: запись конфигурационного файла
+registerHandler('write-config-file', async (event, fileName, content) => {
+  try {
+    const configDir = getI2pdConfigDir();
+    const filePath = path.join(configDir, fileName);
+    
+    // Создаем резервную копию перед записью
+    if (fs.existsSync(filePath)) {
+      const backupPath = `${filePath}.backup.${Date.now()}`;
+      fs.copyFileSync(filePath, backupPath);
+      console.log(`💾 Создана резервная копия: ${backupPath}`);
+    }
+    
+    fs.writeFileSync(filePath, content, 'utf8');
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// Функция для записи настроек в конфигурационный файл i2pd
+async function writeSettingsToConfig(settings) {
+  try {
+    const configDir = getI2pdConfigDir();
+    const configPath = path.join(configDir, 'i2pd.conf');
+    
+    // Читаем текущий конфиг
+    let configContent = '';
+    if (fs.existsSync(configPath)) {
+      configContent = fs.readFileSync(configPath, 'utf8');
+    } else {
+      // Если файла нет, читаем из папки приложения
+      const appConfigPath = path.join(__dirname, 'i2pd.conf');
+      if (fs.existsSync(appConfigPath)) {
+        configContent = fs.readFileSync(appConfigPath, 'utf8');
+      }
+    }
+    
+    // Создаем резервную копию
+    if (fs.existsSync(configPath)) {
+      const backupPath = `${configPath}.backup.${Date.now()}`;
+      fs.copyFileSync(configPath, backupPath);
+      console.log(`💾 Создана резервная копия конфига: ${backupPath}`);
+    }
+    
+    // Обновляем настройки в конфиге
+    let updatedConfig = configContent;
+    
+    // HTTP Proxy Port
+    if (settings.httpPort !== undefined) {
+      const httpProxyRegex = /^(\[httpproxy\][\s\S]*?port\s*=\s*)\d+$/m;
+      if (httpProxyRegex.test(updatedConfig)) {
+        updatedConfig = updatedConfig.replace(httpProxyRegex, `$1${settings.httpPort}`);
+      } else {
+        // Добавляем секцию если её нет
+        const httpSection = `[httpproxy]\nport = ${settings.httpPort}\n`;
+        updatedConfig += '\n' + httpSection;
+      }
+    }
+    
+    // SOCKS Proxy Port
+    if (settings.socksPort !== undefined) {
+      const socksProxyRegex = /^(\[socksproxy\][\s\S]*?port\s*=\s*)\d+$/m;
+      if (socksProxyRegex.test(updatedConfig)) {
+        updatedConfig = updatedConfig.replace(socksProxyRegex, `$1${settings.socksPort}`);
+      } else {
+        const socksSection = `[socksproxy]\nport = ${settings.socksPort}\n`;
+        updatedConfig += '\n' + socksSection;
+      }
+    }
+    
+    // Bandwidth
+    if (settings.bandwidth !== undefined) {
+      const bandwidthRegex = /^(bandwidth\s*=\s*)[A-Z]$/m;
+      if (bandwidthRegex.test(updatedConfig)) {
+        updatedConfig = updatedConfig.replace(bandwidthRegex, `$1${settings.bandwidth}`);
+      } else {
+        updatedConfig += `\nbandwidth = ${settings.bandwidth}\n`;
+      }
+    }
+    
+    // IPv6
+    if (settings.enableIPv6 !== undefined) {
+      const ipv6Regex = /^(ipv6\s*=\s*)(true|false)$/m;
+      if (ipv6Regex.test(updatedConfig)) {
+        updatedConfig = updatedConfig.replace(ipv6Regex, `$1${settings.enableIPv6}`);
+      } else {
+        updatedConfig += `\nipv6 = ${settings.enableIPv6}\n`;
+      }
+    }
+    
+    // UPnP
+    if (settings.enableUPnP !== undefined) {
+      const upnpRegex = /^(\[upnp\][\s\S]*?enabled\s*=\s*)(true|false)$/m;
+      if (upnpRegex.test(updatedConfig)) {
+        updatedConfig = updatedConfig.replace(upnpRegex, `$1${settings.enableUPnP}`);
+      } else {
+        const upnpSection = `[upnp]\nenabled = ${settings.enableUPnP}\n`;
+        updatedConfig += '\n' + upnpSection;
+      }
+    }
+    
+    // Log Level
+    if (settings.logLevel !== undefined) {
+      const logLevelRegex = /^(loglevel\s*=\s*)(debug|info|warn|error|critical|none)$/m;
+      if (logLevelRegex.test(updatedConfig)) {
+        updatedConfig = updatedConfig.replace(logLevelRegex, `$1${settings.logLevel}`);
+      } else {
+        updatedConfig += `\nloglevel = ${settings.logLevel}\n`;
+      }
+    }
+    
+    // Floodfill
+    if (settings.enableFloodfill !== undefined) {
+      const floodfillRegex = /^(floodfill\s*=\s*)(true|false)$/m;
+      if (floodfillRegex.test(updatedConfig)) {
+        updatedConfig = updatedConfig.replace(floodfillRegex, `$1${settings.enableFloodfill}`);
+      } else {
+        updatedConfig += `\nfloodfill = ${settings.enableFloodfill}\n`;
+      }
+    }
+    
+    // Transit (notransit - инвертированное значение)
+    if (settings.enableTransit !== undefined) {
+      const transitRegex = /^(notransit\s*=\s*)(true|false)$/m;
+      const transitValue = !settings.enableTransit; // Инвертируем
+      if (transitRegex.test(updatedConfig)) {
+        updatedConfig = updatedConfig.replace(transitRegex, `$1${transitValue}`);
+      } else {
+        updatedConfig += `\nnotransit = ${transitValue}\n`;
+      }
+    }
+    
+    // Max Transit Tunnels
+    if (settings.maxTransitTunnels !== undefined) {
+      const limitsRegex = /^(\[limits\][\s\S]*?transittunnels\s*=\s*)\d+$/m;
+      if (limitsRegex.test(updatedConfig)) {
+        updatedConfig = updatedConfig.replace(limitsRegex, `$1${settings.maxTransitTunnels}`);
+      } else {
+        const limitsSection = `[limits]\ntransittunnels = ${settings.maxTransitTunnels}\n`;
+        updatedConfig += '\n' + limitsSection;
+      }
+    }
+    
+    // Записываем обновленный конфиг
+    fs.writeFileSync(configPath, updatedConfig, 'utf8');
+    console.log(`✅ Настройки записаны в конфиг: ${configPath}`);
+    
+    return { success: true, configPath };
+  } catch (error) {
+    console.error('❌ Ошибка записи настроек в конфиг:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// IPC: запись настроек в конфигурационный файл
+registerHandler('write-settings-to-config', async (event, settings) => {
+  return await writeSettingsToConfig(settings);
+});
+
 // IPC: корректное завершение приложения (с остановкой демона)
 registerHandler('quit-app', async () => {
   try {
@@ -873,7 +1110,10 @@ function createMenu() {
 }
 
 // События приложения
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  // Инициализируем конфигурационные файлы при первом запуске
+  await initializeI2pdConfig();
+  
   createWindow();
   createMenu();
 

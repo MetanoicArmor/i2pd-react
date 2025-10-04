@@ -1,6 +1,7 @@
 import React from 'react';
 import styled from 'styled-components';
 import { Clock, Users, Activity } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const Card = styled.div`
   background-color: ${props => props.theme.colors.surface};
@@ -95,13 +96,15 @@ const StatValue = styled.div`
 `;
 
 function StatusCard({ isRunning, uptime, peerCount }) {
+  const { t } = useTranslation();
+  
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Статус демона</CardTitle>
+        <CardTitle>{t('Daemon Status')}</CardTitle>
         <StatusBadge $isRunning={isRunning}>
           <StatusDot $isRunning={isRunning} />
-          {isRunning ? 'Работает' : 'Остановлен'}
+          {isRunning ? t('Running') : t('Stopped')}
         </StatusBadge>
       </CardHeader>
       
@@ -111,7 +114,7 @@ function StatusCard({ isRunning, uptime, peerCount }) {
             <Clock size={16} />
           </StatIcon>
           <StatContent>
-            <StatLabel>Время работы</StatLabel>
+            <StatLabel>{t('Uptime')}</StatLabel>
             <StatValue>{uptime}</StatValue>
           </StatContent>
         </StatItem>
@@ -121,7 +124,7 @@ function StatusCard({ isRunning, uptime, peerCount }) {
             <Users size={16} />
           </StatIcon>
           <StatContent>
-            <StatLabel>Подключения</StatLabel>
+            <StatLabel>{t('Connections')}</StatLabel>
             <StatValue>{peerCount}</StatValue>
           </StatContent>
         </StatItem>

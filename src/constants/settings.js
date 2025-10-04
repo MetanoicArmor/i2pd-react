@@ -3,7 +3,8 @@ export const SETTINGS_CATEGORIES = {
   GENERAL: 'general',
   NETWORK: 'network',
   ADVANCED: 'advanced',
-  APPEARANCE: 'appearance'
+  APPEARANCE: 'appearance',
+  CONFIG: 'config'
 };
 
 export const DEFAULT_SETTINGS = {

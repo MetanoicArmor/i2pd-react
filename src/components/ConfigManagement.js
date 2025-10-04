@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { FileText, FolderOpen, Download, Upload, RefreshCw, AlertCircle } from 'lucide-react';
-import { useElectron } from '../hooks/useElectron';
+import { FileText, FolderOpen, RefreshCw, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
 const Container = styled.div`
   display: flex;
@@ -42,12 +42,19 @@ const FileList = styled.div`
 
 const FileItem = styled.div`
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   padding: 12px;
   background-color: ${props => props.theme.colors.background};
   border: 1px solid ${props => props.theme.colors.border};
   border-radius: 8px;
+  margin-bottom: 16px;
+`;
+
+const FileHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
 `;
 
 const FileInfo = styled.div`
@@ -62,17 +69,12 @@ const FileName = styled.div`
   color: ${props => props.theme.colors.text};
 `;
 
-const FilePath = styled.div`
+const FileDescription = styled.div`
   font-size: 12px;
   color: ${props => props.theme.colors.textSecondary};
 `;
 
-const FileActions = styled.div`
-  display: flex;
-  gap: 8px;
-`;
-
-const ActionButton = styled.button`
+const OpenButton = styled.button`
   display: flex;
   align-items: center;
   gap: 4px;
@@ -97,7 +99,9 @@ const ActionButton = styled.button`
 `;
 
 const ConfigEditor = styled.div`
-  margin-top: 16px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid ${props => props.theme.colors.border};
 `;
 
 const EditorHeader = styled.div`
@@ -169,127 +173,82 @@ const Warning = styled.div`
   font-size: 12px;
 `;
 
-function ConfigManagement() {
-  const { isElectron, showOpenDialog, showSaveDialog } = useElectron();
+function ConfigManagement({ electronAPI }) {
+  const { t } = useTranslation();
   const [configFiles, setConfigFiles] = useState([]);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [fileContent, setFileContent] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [expandedFiles, setExpandedFiles] = useState({});
+  const [fileContents, setFileContents] = useState({});
+  const [isLoading, setIsLoading] = useState({});
 
   // Стандартные конфигурационные файлы i2pd
   const defaultConfigFiles = [
     {
       name: 'i2pd.conf',
-      description: 'Основной конфигурационный файл',
-      path: '~/.i2pd/i2pd.conf',
+      description: t('Main configuration file'),
       editable: true
     },
     {
       name: 'tunnels.conf',
-      description: 'Конфигурация туннелей',
-      path: '~/.i2pd/tunnels.conf',
+      description: t('Tunnel configuration'),
       editable: true
     },
     {
       name: 'subscriptions.txt',
-      description: 'Подписки адресной книги',
-      path: '~/.i2pd/subscriptions.txt',
+      description: t('Address book subscriptions'),
       editable: true
     }
   ];
 
   useEffect(() => {
     setConfigFiles(defaultConfigFiles);
-  }, []);
+  }, [t]);
 
-  const loadFileContent = async (file) => {
-    if (!isElectron) {
-      toast.error('Управление файлами доступно только в Electron версии');
+  const loadFileContent = async (fileName) => {
+    if (!electronAPI) {
+      toast.error(t('File management is only available in Electron version'));
       return;
     }
 
-    setIsLoading(true);
+    setIsLoading(prev => ({ ...prev, [fileName]: true }));
     try {
-      // В реальном приложении здесь будет чтение файла через Electron API
-      const mockContent = `# ${file.name} - Конфигурационный файл
-# Этот файл содержит настройки для ${file.description}
-
-# Пример содержимого файла
-# В реальном приложении здесь будет актуальное содержимое
-
-[section]
-option = value
-`;
-      
-      setFileContent(mockContent);
-      setSelectedFile(file);
-    } catch (error) {
-      toast.error(`Ошибка загрузки файла: ${error.message}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const saveFileContent = async () => {
-    if (!selectedFile) return;
-
-    setIsLoading(true);
-    try {
-      // В реальном приложении здесь будет сохранение файла через Electron API
-      toast.success(`Файл ${selectedFile.name} сохранен`);
-    } catch (error) {
-      toast.error(`Ошибка сохранения файла: ${error.message}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const exportConfig = async (file) => {
-    if (!isElectron) {
-      toast.error('Экспорт доступен только в Electron версии');
-      return;
-    }
-
-    try {
-      const result = await showSaveDialog({
-        title: `Экспорт ${file.name}`,
-        defaultPath: file.name,
-        filters: [
-          { name: 'Text Files', extensions: ['txt', 'conf'] },
-          { name: 'All Files', extensions: ['*'] }
-        ]
-      });
-
-      if (!result.canceled) {
-        // В реальном приложении здесь будет экспорт файла
-        toast.success(`Конфигурация экспортирована в ${result.filePath}`);
+      const result = await electronAPI.invoke('read-config-file', fileName);
+      if (result.success) {
+        setFileContents(prev => ({ ...prev, [fileName]: result.content }));
+        setExpandedFiles(prev => ({ ...prev, [fileName]: true }));
+      } else {
+        toast.error(`${t('File loading error')}: ${result.error}`);
       }
     } catch (error) {
-      toast.error(`Ошибка экспорта: ${error.message}`);
+      toast.error(`${t('File loading error')}: ${error.message}`);
+    } finally {
+      setIsLoading(prev => ({ ...prev, [fileName]: false }));
     }
   };
 
-  const importConfig = async (file) => {
-    if (!isElectron) {
-      toast.error('Импорт доступен только в Electron версии');
-      return;
-    }
+  const saveFileContent = async (fileName) => {
+    if (!electronAPI) return;
 
+    setIsLoading(prev => ({ ...prev, [fileName]: true }));
     try {
-      const result = await showOpenDialog({
-        title: `Импорт ${file.name}`,
-        filters: [
-          { name: 'Text Files', extensions: ['txt', 'conf'] },
-          { name: 'All Files', extensions: ['*'] }
-        ]
-      });
-
-      if (!result.canceled && result.filePaths.length > 0) {
-        // В реальном приложении здесь будет импорт файла
-        toast.success(`Конфигурация импортирована из ${result.filePaths[0]}`);
+      const content = fileContents[fileName] || '';
+      const result = await electronAPI.invoke('write-config-file', fileName, content);
+      if (result.success) {
+        toast.success(t('File saved'));
+      } else {
+        toast.error(`${t('File saving error')}: ${result.error}`);
       }
     } catch (error) {
-      toast.error(`Ошибка импорта: ${error.message}`);
+      toast.error(`${t('File saving error')}: ${error.message}`);
+    } finally {
+      setIsLoading(prev => ({ ...prev, [fileName]: false }));
+    }
+  };
+
+  const toggleFileExpansion = (fileName) => {
+    if (expandedFiles[fileName]) {
+      setExpandedFiles(prev => ({ ...prev, [fileName]: false }));
+    } else {
+      loadFileContent(fileName);
     }
   };
 
@@ -299,67 +258,61 @@ option = value
         <SectionHeader>
           <SectionTitle>
             <FileText size={20} />
-            Конфигурационные файлы
+            {t('Configuration Files')}
           </SectionTitle>
         </SectionHeader>
 
         <Warning>
           <AlertCircle size={16} />
-          Изменение конфигурационных файлов может повлиять на работу демона. 
-          Рекомендуется создать резервную копию перед внесением изменений.
+          {t('Changing configuration files may affect daemon operation. It is recommended to create a backup before making changes.')}
         </Warning>
 
         <FileList>
           {configFiles.map((file, index) => (
             <FileItem key={index}>
-              <FileInfo>
-                <FileText size={16} />
-                <div>
-                  <FileName>{file.name}</FileName>
-                  <FilePath>{file.path}</FilePath>
-                </div>
-              </FileInfo>
-              <FileActions>
-                <ActionButton onClick={() => loadFileContent(file)}>
+              <FileHeader>
+                <FileInfo>
+                  <FileText size={16} />
+                  <div>
+                    <FileName>{file.name}</FileName>
+                    <FileDescription>{file.description}</FileDescription>
+                  </div>
+                </FileInfo>
+                <OpenButton onClick={() => toggleFileExpansion(file.name)}>
                   <FolderOpen />
-                  Открыть
-                </ActionButton>
-                <ActionButton onClick={() => exportConfig(file)}>
-                  <Download />
-                  Экспорт
-                </ActionButton>
-                <ActionButton onClick={() => importConfig(file)}>
-                  <Upload />
-                  Импорт
-                </ActionButton>
-              </FileActions>
+                  {expandedFiles[file.name] ? t('Hide') : t('Open')}
+                </OpenButton>
+              </FileHeader>
+
+              {expandedFiles[file.name] && (
+                <ConfigEditor>
+                  <EditorHeader>
+                    <EditorTitle>{t('Editing')}: {file.name}</EditorTitle>
+                    <SaveButton 
+                      onClick={() => saveFileContent(file.name)} 
+                      disabled={isLoading[file.name]}
+                    >
+                      <RefreshCw />
+                      {isLoading[file.name] ? t('Saving...') : t('Save')}
+                    </SaveButton>
+                  </EditorHeader>
+                  <TextArea
+                    value={fileContents[file.name] || ''}
+                    onChange={(e) => setFileContents(prev => ({ 
+                      ...prev, 
+                      [file.name]: e.target.value 
+                    }))}
+                    placeholder={t('Configuration file content')}
+                    disabled={isLoading[file.name]}
+                  />
+                </ConfigEditor>
+              )}
             </FileItem>
           ))}
         </FileList>
       </Section>
-
-      {selectedFile && (
-        <Section>
-          <ConfigEditor>
-            <EditorHeader>
-              <EditorTitle>Редактирование: {selectedFile.name}</EditorTitle>
-              <SaveButton onClick={saveFileContent} disabled={isLoading}>
-                <RefreshCw />
-                Сохранить
-              </SaveButton>
-            </EditorHeader>
-            <TextArea
-              value={fileContent}
-              onChange={(e) => setFileContent(e.target.value)}
-              placeholder="Содержимое конфигурационного файла..."
-              disabled={isLoading}
-            />
-          </ConfigEditor>
-        </Section>
-      )}
     </Container>
   );
 }
 
 export default ConfigManagement;
-

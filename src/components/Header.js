@@ -1,6 +1,7 @@
 import React from 'react';
 import styled from 'styled-components';
 import { Settings, Info, RefreshCw, Minimize2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const HeaderContainer = styled.div`
   display: flex;
@@ -91,6 +92,8 @@ function Header({
   onRefreshClick, 
   isRunning 
 }) {
+  const { t } = useTranslation();
+  
   return (
     <HeaderContainer>
       <Title>I2P Daemon GUI</Title>
@@ -98,33 +101,33 @@ function Header({
       <Controls>
         <StatusIndicator $isRunning={isRunning}>
           <StatusDot $isRunning={isRunning} />
-          {isRunning ? 'Running' : 'Stopped'}
+          {isRunning ? t('Running') : t('Stopped')}
         </StatusIndicator>
         
         <ControlButton 
           onClick={onRefreshClick}
-          title="Обновить статус"
+          title={t('Refresh status')}
         >
           <RefreshCw />
         </ControlButton>
         
         <ControlButton 
           onClick={onSettingsClick}
-          title="Настройки"
+          title={t('Settings')}
         >
           <Settings />
         </ControlButton>
         
         <ControlButton 
           onClick={onAboutClick}
-          title="О программе"
+          title={t('About')}
         >
           <Info />
         </ControlButton>
         
         <ControlButton 
           onClick={() => window.electronAPI?.invoke('minimize-to-tray')}
-          title="Свернуть в трей"
+          title={t('Minimize to tray')}
         >
           <Minimize2 />
         </ControlButton>

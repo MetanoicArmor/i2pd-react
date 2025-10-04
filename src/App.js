@@ -252,7 +252,7 @@ const App = () => {
   // Проверка статуса демона
   const checkStatus = async () => {
     if (!isElectron || !electronAPI) {
-      addLog('info', 'Запущено в браузере - демон недоступен');
+      addLog('info', t('Running in browser - daemon unavailable'));
       return;
     }
 
@@ -267,7 +267,7 @@ const App = () => {
       if (result.isRunning) {
         setIsRunning(true);
         if (prevRunningRef.current !== true) {
-          addLog('info', 'Демон работает');
+          addLog('info', t('Daemon is running'));
           // Получаем версию демона при первом обнаружении запущенного демона
           fetchDaemonVersion();
         }
@@ -276,13 +276,13 @@ const App = () => {
       } else {
         setIsRunning(false);
         if (prevRunningRef.current !== false) {
-          addLog('info', 'Демон остановлен');
+          addLog('info', t('Daemon is stopped'));
         }
       }
 
       prevRunningRef.current = !!result.isRunning;
     } catch (error) {
-      addLog('error', `Ошибка проверки статуса: ${error.message}`);
+      addLog('error', `${t('Status check error')}: ${error.message}`);
       setIsRunning(false);
     }
   };
@@ -290,28 +290,28 @@ const App = () => {
   // Запуск демона
   const startDaemon = async () => {
     if (operationInProgress) {
-      addLog('warning', 'Операция уже выполняется');
+      addLog('warning', t('Operation already in progress'));
       return;
     }
 
     if (isRunning) {
-      addLog('warning', 'Демон уже запущен');
+      addLog('warning', t('Daemon already running'));
       return;
     }
 
     if (!isElectron || !electronAPI) {
-      addLog('error', 'Electron API недоступен');
+      addLog('error', t('Electron API not available'));
       return;
     }
 
     setOperationInProgress(true);
-    addLog('info', 'Запуск демона...');
+    addLog('info', t('Starting daemon...'));
 
     try {
       const result = await electronAPI.invoke('start-daemon');
       if (result.success) {
         setIsRunning(true);
-        addLog('info', 'Демон успешно запущен');
+        addLog('info', t('Daemon started successfully'));
         // Обновляем статистику после запуска
         setTimeout(() => {
           if (typeof refreshStats === 'function') {
@@ -324,7 +324,7 @@ const App = () => {
         throw new Error(result.error || 'Неизвестная ошибка');
       }
     } catch (error) {
-      addLog('error', `Ошибка запуска демона: ${error.message}`);
+      addLog('error', `${t('Daemon start error')}: ${error.message}`);
     } finally {
       setOperationInProgress(false);
     }
@@ -333,33 +333,33 @@ const App = () => {
   // Остановка демона
   const stopDaemon = async () => {
     if (operationInProgress) {
-      addLog('warning', 'Операция уже выполняется');
+      addLog('warning', t('Operation already in progress'));
       return;
     }
 
     if (!isRunning) {
-      addLog('warning', 'Демон уже остановлен');
+      addLog('warning', t('Daemon already stopped'));
       return;
     }
 
     if (!isElectron || !electronAPI) {
-      addLog('error', 'Electron API недоступен');
+      addLog('error', t('Electron API not available'));
       return;
     }
 
     setOperationInProgress(true);
-    addLog('info', 'Остановка демона...');
+    addLog('info', t('Stopping daemon...'));
 
     try {
       const result = await electronAPI.invoke('stop-daemon');
       if (result.success) {
         setIsRunning(false);
-        addLog('info', 'Демон успешно остановлен');
+        addLog('info', t('Daemon stopped successfully'));
       } else {
         throw new Error(result.error || 'Неизвестная ошибка');
       }
     } catch (error) {
-      addLog('error', `Ошибка остановки демона: ${error.message}`);
+      addLog('error', `${t('Daemon stop error')}: ${error.message}`);
     } finally {
       setOperationInProgress(false);
     }
@@ -368,22 +368,22 @@ const App = () => {
   // Перезагрузка демона
   const restartDaemon = async () => {
     if (operationInProgress) {
-      addLog('warning', 'Операция уже выполняется');
+      addLog('warning', t('Operation already in progress'));
       return;
     }
 
     if (!isElectron || !electronAPI) {
-      addLog('error', 'Electron API недоступен');
+      addLog('error', t('Electron API not available'));
       return;
     }
 
     setOperationInProgress(true);
-    addLog('info', 'Перезапуск демона...');
+    addLog('info', t('Restarting daemon...'));
 
     try {
       // Сначала останавливаем демон, если он запущен
       if (isRunning) {
-        addLog('info', 'Остановка демона для перезапуска...');
+        addLog('info', t('Stopping daemon for restart...'));
         const stopResult = await electronAPI.invoke('stop-daemon');
         if (!stopResult.success) {
           throw new Error(stopResult.error || 'Не удалось остановить демон');
@@ -395,11 +395,11 @@ const App = () => {
       }
 
       // Запускаем демон заново
-      addLog('info', 'Запуск демона после перезапуска...');
+        addLog('info', t('Starting daemon after restart...'));
       const startResult = await electronAPI.invoke('start-daemon');
       if (startResult.success) {
         setIsRunning(true);
-        addLog('success', 'Демон успешно перезапущен');
+        addLog('success', t('Daemon restarted successfully'));
         
         // Обновляем статистику и версию после перезагрузки
         setTimeout(() => {
@@ -412,7 +412,7 @@ const App = () => {
         throw new Error(startResult.error || 'Не удалось запустить демон после перезапуска');
       }
     } catch (error) {
-      addLog('error', `Ошибка перезапуска демона: ${error.message}`);
+      addLog('error', `${t('Daemon restart error')}: ${error.message}`);
     } finally {
       setOperationInProgress(false);
     }
@@ -440,15 +440,15 @@ const App = () => {
       
       if (result.success) {
         setDaemonVersion(result.version);
-        addLog('info', `Версия демона: ${result.version}`);
+        addLog('info', `${t('Daemon version')}: ${result.version}`);
         console.log('✅ Версия установлена:', result.version);
       } else {
-        addLog('warning', `Не удалось получить версию демона: ${result.error}`);
+        addLog('warning', `${t('Failed to get daemon version')}: ${result.error}`);
         console.log('❌ Ошибка получения версии:', result.error);
       }
     } catch (error) {
       console.error('❌ Ошибка получения версии демона:', error);
-      addLog('error', `Ошибка получения версии демона: ${error.message}`);
+      addLog('error', `${t('Daemon version error')}: ${error.message}`);
     }
   };
 
@@ -456,7 +456,7 @@ const App = () => {
   useEffect(() => {
     const initializeApp = async () => {
       if (isElectron) {
-        addLog('info', 'Приложение инициализировано');
+        addLog('info', t('Application initialized'));
         
         // Проверяем статус демона
         await checkStatus();
@@ -470,11 +470,11 @@ const App = () => {
             try {
               const result = await electronAPI.invoke('check-daemon-status');
               if (!result.isRunning && !operationInProgress) {
-                addLog('info', 'Автозапуск демона...');
+                addLog('info', t('Auto-starting daemon...'));
                 await startDaemon();
               }
             } catch (error) {
-              addLog('error', `Ошибка автозапуска: ${error.message}`);
+              addLog('error', `${t('Auto-start error')}: ${error.message}`);
             }
           }, 3000);
         }
@@ -542,7 +542,7 @@ const App = () => {
               ⚙️ {t('Settings')}
             </Button>
             <Button onClick={() => electronAPI?.invoke('quit-app')}>
-              Выйти
+              {t('Quit')}
             </Button>
             <StatusIndicator $isRunning={isRunning}>
               <StatusDot $isRunning={isRunning} />
@@ -617,9 +617,9 @@ const App = () => {
           {/* Информация */}
           <Card>
             <h3 style={{ margin: '0 0 16px 0', fontSize: '16px' }}>
-              Информация
+              {t('Information')}
             </h3>
-            <p style={{ margin: '0', color: '#8E8E93' }}>{isElectron ? 'Electron' : 'Browser'}</p>
+            <p style={{ margin: '0', color: '#8E8E93' }}>{isElectron ? 'Electron' : t('Browser')}</p>
             <p style={{ margin: '8px 0 0 0', color: '#8E8E93' }}>{t('Status')}: {isRunning ? t('Running') : t('Stopped')}</p>
             <p style={{ margin: '8px 0 0 0', color: '#8E8E93' }}>{t('Operation')}: {operationInProgress ? t('In progress') : t('System ready')}</p>
             <p style={{ margin: '8px 0 0 0', color: '#8E8E93' }}>{t('App Theme')}: {settings.theme === 'dark' ? t('Dark') : t('Light')}</p>
