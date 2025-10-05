@@ -1,6 +1,6 @@
 {
   "name": "i2pd-react-gui",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Кроссплатформенный GUI для управления I2P Daemon на React",
   "main": "public/electron.js",
   "homepage": "./",
