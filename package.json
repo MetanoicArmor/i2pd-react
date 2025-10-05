@@ -32,7 +32,6 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-scripts": "5.0.1",
-    "electron": "^27.0.0",
     "electron-is-dev": "^2.0.0",
     "electron-store": "^8.1.0",
     "electron-updater": "^6.1.4",
@@ -46,6 +45,7 @@
     "node-pty": "^1.0.0"
   },
   "devDependencies": {
+    "electron": "^27.0.0",
     "electron-builder": "^24.6.4",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
@@ -73,12 +73,20 @@
     "files": [
       "build/**/*",
       "public/electron.js",
+      "public/preload.js",
+      "Mac/i2pd",
       "node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "Mac/i2pd",
+        "to": "Mac/i2pd"
+      }
     ],
     "mac": {
       "category": "public.app-category.network",
-      "target": "dmg",
-      "icon": "assets/icon.icns"
+      "target": ["dmg", "zip"],
+      "icon": "public/icon-512.png"
     },
     "win": {
       "target": "nsis",
