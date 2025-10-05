@@ -544,8 +544,12 @@ function findI2pdExecutable() {
   if (platform === 'darwin') {
     // macOS: ищем в папке Mac
     possiblePaths = [
+      // В собранном приложении (extraResources)
+      path.join(process.resourcesPath, 'Mac', 'i2pd'),
+      // В режиме разработки
       path.join(__dirname, '..', 'Mac', 'i2pd'),
       path.join(__dirname, 'Mac', 'i2pd'),
+      // Системные пути
       '/usr/local/bin/i2pd',
       '/opt/homebrew/bin/i2pd',
       '/usr/local/sbin/i2pd'
@@ -553,16 +557,24 @@ function findI2pdExecutable() {
   } else if (platform === 'win32') {
     // Windows: ищем в папке Win
     possiblePaths = [
+      // В собранном приложении (extraResources)
+      path.join(process.resourcesPath, 'Win', 'i2pd.exe'),
+      // В режиме разработки
       path.join(__dirname, '..', 'Win', 'i2pd.exe'),
       path.join(__dirname, 'Win', 'i2pd.exe'),
+      // Системные пути
       'C:\\Program Files\\i2pd\\i2pd.exe',
       'C:\\Program Files (x86)\\i2pd\\i2pd.exe'
     ];
   } else {
     // Linux: ищем в папке Lin
     possiblePaths = [
+      // В собранном приложении (extraResources)
+      path.join(process.resourcesPath, 'Lin', 'i2pd'),
+      // В режиме разработки
       path.join(__dirname, '..', 'Lin', 'i2pd'),
       path.join(__dirname, 'Lin', 'i2pd'),
+      // Системные пути
       '/usr/local/bin/i2pd',
       '/usr/bin/i2pd',
       '/usr/local/sbin/i2pd',
