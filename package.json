@@ -77,6 +77,8 @@
       "build/**/*",
       "public/electron.js",
       "public/preload.js",
+      "public/icon.png",
+      "public/tray-icon.png",
       "Mac/i2pd",
       "node_modules/**/*"
     ],
