@@ -24,11 +24,14 @@ wget https://github.com/MetanoicArmor/i2pd-react/releases/download/v1.1.1-linux/
 curl -L -o "I2P Daemon GUI-1.1.0.AppImage" https://github.com/MetanoicArmor/i2pd-react/releases/download/v1.1.1-linux/I2P\ Daemon\ GUI-1.1.0.AppImage
 ```
 
-### 2️⃣ Сделать исполняемым
+### 2️⃣ Сделать исполняемым ⚠️ ВАЖНО!
 
 ```bash
 chmod +x "I2P Daemon GUI-1.1.0.AppImage"
 ```
+
+> ⚠️ **КРИТИЧЕСКИ ВАЖНО!** Без этого шага AppImage не запустится!
+> Если забыли дать права, получите ошибку: `Permission denied`
 
 ### 3️⃣ Запустить
 
@@ -174,6 +177,20 @@ port = 4447
 
 ## 🔍 Устранение неполадок
 
+### ❌ AppImage не запускается
+
+```bash
+# Ошибка: Permission denied
+bash: ./I2P Daemon GUI-1.1.0.AppImage: Permission denied
+
+# РЕШЕНИЕ: Дать права на выполнение
+chmod +x "I2P Daemon GUI-1.1.0.AppImage"
+
+# Проверить права
+ls -la "I2P Daemon GUI-1.1.0.AppImage"
+# Должно показать: -rwxr-xr-x (права на выполнение)
+```
+
 ### ❌ Демон не запускается
 
 ```bash
@@ -219,6 +236,9 @@ chmod -R 755 ~/.i2pd/certificates/
 - **🐛 Баги**: https://github.com/MetanoicArmor/i2pd-react/issues
 
 ### 📋 FAQ
+
+**Q: AppImage не запускается, ошибка "Permission denied"?**  
+A: ⚠️ **ВАЖНО!** Нужно дать права на выполнение: `chmod +x "I2P Daemon GUI-1.1.0.AppImage"`
 
 **Q: Нужно ли устанавливать i2pd отдельно?**  
 A: Нет, исполняемый файл встроен в AppImage.

@@ -296,13 +296,16 @@ npm run build
 # Проверка Electron
 npm run electron-dev
 
-# Проверка AppImage
+# Проверка AppImage (ВАЖНО: дать права!)
+chmod +x "dist/I2P Daemon GUI-1.1.0.AppImage"
 ./dist/I2P\ Daemon\ GUI-1.1.0.AppImage
 
 # Проверка демона
 ps aux | grep i2pd
 curl http://127.0.0.1:7070/
 ```
+
+> ⚠️ **ВАЖНО!** AppImage требует права на выполнение: `chmod +x`
 
 ### 🔍 Отладка
 

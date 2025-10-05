@@ -40,10 +40,12 @@
    wget https://github.com/MetanoicArmor/i2pd-react/releases/download/v1.1.1-linux/I2P\ Daemon\ GUI-1.1.0.AppImage
    ```
 
-2. **Сделать исполняемым**:
+2. **Сделать исполняемым** (ВАЖНО!):
    ```bash
    chmod +x "I2P Daemon GUI-1.1.0.AppImage"
    ```
+   > ⚠️ **КРИТИЧЕСКИ ВАЖНО!** Без этого шага AppImage не запустится!
+   > Подробнее: [IMPORTANT_REMINDERS.md](IMPORTANT_REMINDERS.md)
 
 3. **Запустить**:
    ```bash

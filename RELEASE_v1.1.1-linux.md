@@ -66,12 +66,15 @@ npm run dist-linux
 # Скачать AppImage
 wget https://github.com/MetanoicArmor/i2pd-react/releases/download/v1.1.1-linux/I2P\ Daemon\ GUI-1.1.0.AppImage
 
-# Сделать исполняемым
+# ⚠️ ВАЖНО! Сделать исполняемым
 chmod +x "I2P Daemon GUI-1.1.0.AppImage"
 
 # Запустить
 ./I2P\ Daemon\ GUI-1.1.0.AppImage
 ```
+
+> ⚠️ **КРИТИЧЕСКИ ВАЖНО!** Не забудьте дать права на выполнение!
+> Без `chmod +x` получите ошибку "Permission denied"
 
 ### 🛠️ Разработка
 ```bash
