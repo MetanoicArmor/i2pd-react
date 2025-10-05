@@ -15,6 +15,9 @@
     "preelectron-pack": "npm run build",
     "dist": "npm run build && electron-builder",
     "dist-mac": "npm run build && electron-builder --mac",
+    "dist-mac-arm64": "npm run build && electron-builder --mac --arm64",
+    "dist-mac-x64": "npm run build && electron-builder --mac --x64",
+    "dist-mac-universal": "npm run build && electron-builder --mac --universal",
     "dist-win": "npm run build && electron-builder --win",
     "dist-linux": "npm run build && electron-builder --linux"
   },
