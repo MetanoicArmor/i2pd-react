@@ -234,6 +234,19 @@ function ConfigManagement({ electronAPI }) {
       const result = await electronAPI.invoke('write-config-file', fileName, content);
       if (result.success) {
         toast.success(t('File saved'));
+        
+        // Если сохранили i2pd.conf, перезапускаем демон
+        if (fileName === 'i2pd.conf') {
+          const statusResult = await electronAPI.invoke('check-daemon-status');
+          if (statusResult.isRunning) {
+            const restartResult = await electronAPI.invoke('restart-daemon');
+            if (restartResult.success) {
+              toast.success(t('Daemon restarted'));
+            } else {
+              toast.error(`${t('Daemon restart error')}: ${restartResult.error}`);
+            }
+          }
+        }
       } else {
         toast.error(`${t('File saving error')}: ${result.error}`);
       }

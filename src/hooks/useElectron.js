@@ -7,10 +7,16 @@ export function useElectron() {
 
   // Инициализация Electron API
   useEffect(() => {
+    console.log('🔍 useElectron: Проверяем window.electronAPI...');
+    console.log('🔍 useElectron: window.electronAPI =', window.electronAPI);
+    console.log('🔍 useElectron: typeof window.electronAPI =', typeof window.electronAPI);
+    
     if (window.electronAPI) {
+      console.log('✅ useElectron: electronAPI найден!');
       setIsElectron(true);
       setElectronAPI(window.electronAPI);
     } else {
+      console.log('❌ useElectron: electronAPI НЕ найден!');
       setIsElectron(false);
       setElectronAPI(null);
     }

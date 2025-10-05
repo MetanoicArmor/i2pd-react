@@ -140,17 +140,34 @@ function createWindow() {
     console.error('Failed to load:', errorCode, errorDescription);
   });
 
+  // Обработчики событий окна для настроек трея
+  mainWindow.on('minimize', (event) => {
+    // Получаем настройки из store
+    const store = new Store();
+    const minimizeToTray = store.get('minimizeToTray', true);
+    
+    if (minimizeToTray) {
+      event.preventDefault();
+      mainWindow.hide();
+      console.log('🔄 Окно свернуто в трей');
+    }
+  });
+
   mainWindow.on('close', (event) => {
     if (isDev) {
       app.quit();
     } else {
-      // Если нет трея, закрытие окна завершает приложение
-      if (!tray) {
+      // Получаем настройки из store
+      const store = new Store();
+      const closeToTray = store.get('closeToTray', true);
+      
+      if (closeToTray && tray) {
+        event.preventDefault();
+        mainWindow.hide();
+        console.log('🔄 Окно скрыто в трей при закрытии');
+      } else {
         app.quit();
-        return;
       }
-      event.preventDefault();
-      mainWindow.hide();
     }
   });
 
@@ -429,6 +446,25 @@ function updateTrayStatus(status) {
   ]);
   
   tray.setContextMenu(contextMenu);
+  
+  // Настройка скрытия из Dock на macOS
+  updateDockVisibility();
+}
+
+// Обновление видимости в Dock на macOS
+function updateDockVisibility() {
+  if (process.platform === 'darwin' && app.dock) {
+    const store = new Store();
+    const hideFromDock = store.get('hideFromDock', false);
+    
+    if (hideFromDock) {
+      app.dock.hide();
+      console.log('🔄 Приложение скрыто из Dock');
+    } else {
+      app.dock.show();
+      console.log('🔄 Приложение показано в Dock');
+    }
+  }
 }
 
 // Получение и парсинг статистики из веб-консоли i2pd (порт 7070)
@@ -659,6 +695,40 @@ registerHandler('minimize-to-tray', () => {
   }
 });
 
+// IPC: перезапуск демона атомарно
+registerHandler('restart-daemon', async () => {
+  try {
+    console.log('🔧 IPC: restart-daemon invoked');
+    const stop = await stopDaemonInternal();
+    console.log('🔧 IPC: restart-daemon stop result:', stop);
+    // подождем немного перед стартом
+    await new Promise(r => setTimeout(r, 1000));
+    
+    // Запускаем демон напрямую через внутреннюю функцию
+    const executablePath = findI2pdExecutable();
+    if (!executablePath) {
+      throw new Error('i2pd не найден в системе');
+    }
+    
+    const configDir = getI2pdConfigDir();
+    const configPath = path.join(configDir, 'i2pd.conf');
+    
+    daemonProcess = spawn(executablePath, [`--conf=${configPath}`, '--daemon'], {
+      detached: true,
+      stdio: 'ignore'
+    });
+    
+    daemonProcess.unref();
+    daemonPID = daemonProcess.pid;
+    
+    console.log('🔧 IPC: restart-daemon start result:', { success: true, pid: daemonPID });
+    return { success: true, stop, start: { success: true, pid: daemonPID } };
+  } catch (e) {
+    console.error('❌ restart-daemon error:', e.message);
+    return { success: false, error: e.message };
+  }
+});
+
 registerHandler('check-daemon-status', async () => {
   return await checkDaemonStatusInternal();
 });
@@ -686,8 +756,12 @@ registerHandler('start-daemon', async () => {
           return;
         }
 
-        // Запускаем демон
-        daemonProcess = spawn(executablePath, ['--conf=i2pd.conf', '--daemon'], {
+        // Запускаем демон с абсолютным путем к конфигу
+        const configPath = path.join(getI2pdConfigDir(), 'i2pd.conf');
+        // Гарантируем наличие директории конфигов
+        try { fs.mkdirSync(path.dirname(configPath), { recursive: true }); } catch (_) {}
+
+        daemonProcess = spawn(executablePath, [`--conf=${configPath}`, '--daemon'], {
           detached: true,
           stdio: 'ignore'
         });
@@ -710,6 +784,56 @@ registerHandler('start-daemon', async () => {
     return { success: false, error: error.message };
   }
 });
+
+async function startDaemonInternal() {
+  try {
+    const executablePath = findI2pdExecutable();
+    if (!executablePath) {
+      console.error('i2pd не найден в системе');
+      return;
+    }
+
+    // Проверяем, не запущен ли уже демон
+    const statusResult = await checkDaemonStatusInternal();
+    if (statusResult.isRunning) {
+      console.log('Daemon is already running, skipping start');
+      return;
+    }
+
+    // Дополнительная проверка через ps
+    exec(`ps aux | grep 'i2pd.*--conf.*i2pd.conf' | grep -v grep`, (error, stdout) => {
+      if (stdout.trim()) {
+        console.log('Daemon process found via ps, skipping start');
+        return;
+      }
+
+      // Запускаем демон с абсолютным путем к конфигу
+      const configPath = path.join(getI2pdConfigDir(), 'i2pd.conf');
+      // Гарантируем наличие директории конфигов
+      try { fs.mkdirSync(path.dirname(configPath), { recursive: true }); } catch (_) {}
+
+      daemonProcess = spawn(executablePath, [`--conf=${configPath}`, '--daemon'], {
+        detached: true,
+        stdio: 'ignore'
+      });
+
+      daemonProcess.unref();
+      daemonPID = daemonProcess.pid;
+
+      // Ждем немного и проверяем статус
+      setTimeout(async () => {
+        const status = await checkDaemonStatusInternal();
+        if (status.isRunning) {
+          updateTrayStatus('Running');
+        }
+      }, 2000);
+
+      console.log('🔧 IPC: start-daemon result:', { success: true, pid: daemonPID });
+    });
+  } catch (error) {
+    console.error('❌ start-daemon error:', error.message);
+  }
+}
 
 async function stopDaemonInternal() {
   try {
@@ -736,7 +860,10 @@ async function stopDaemonInternal() {
 }
 
 registerHandler('stop-daemon', async () => {
-  return await stopDaemonInternal();
+  console.log('🔧 IPC: stop-daemon invoked');
+  const res = await stopDaemonInternal();
+  console.log('🔧 IPC: stop-daemon result:', res);
+  return res;
 });
 
 registerHandler('get-daemon-version', async () => {
@@ -779,6 +906,152 @@ registerHandler('get-daemon-version', async () => {
   } catch (error) {
     console.log('❌ Ошибка получения версии:', error.message);
     return { success: false, error: 'Ошибка доступа к веб-консоли' };
+  }
+});
+
+// IPC: получение информации о портах и пропускной способности из веб-консоли
+registerHandler('get-daemon-network-info', async () => {
+  try {
+    console.log('🔍 Получение информации о сети из веб-консоли...');
+    
+    // Сначала проверяем, запущен ли демон
+    const status = await checkDaemonStatusInternal();
+    if (!status.isRunning) {
+      console.log('❌ Демон не запущен, информация недоступна');
+      return { success: false, error: 'Демон не запущен' };
+    }
+    
+    // Получаем информацию из веб-консоли
+    return new Promise((resolve) => {
+      exec(`curl -s -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" http://127.0.0.1:7070`, (error, stdout) => {
+        if (error) {
+          console.log('❌ Ошибка curl:', error.message);
+          resolve({ success: false, error: 'Ошибка доступа к веб-консоли' });
+          return;
+        }
+        
+        const html = stdout;
+        console.log('📄 HTML получен через curl, длина:', html.length);
+        
+        // Ищем информацию о портах в HTML веб-консоли
+        // Ищем внешние адреса (порты) - это НЕ порты прокси!
+        const externalAddressMatch = html.match(/<b>Our external address:<\/b>[\s\S]*?<td>NTCP2<\/td>\s*<td>supported\s*:(\d+)<\/td>/i);
+        const httpProxyMatch = html.match(/<tr><td>HTTP Proxy<\/td><td class='enabled'>Enabled<\/td><\/tr>/i);
+        const socksProxyMatch = html.match(/<tr><td>SOCKS Proxy<\/td><td class='enabled'>Enabled<\/td><\/tr>/i);
+        
+        // Ищем информацию о пропускной способности (Router Caps)
+        const routerCapsMatch = html.match(/<b>Router Caps:<\/b>\s*([A-Z]+)/i);
+        
+        console.log('🔍 Результат поиска внешнего адреса:', externalAddressMatch);
+        console.log('🔍 HTTP Proxy найден:', !!httpProxyMatch);
+        console.log('🔍 SOCKS Proxy найден:', !!socksProxyMatch);
+        console.log('🔍 Router Caps:', routerCapsMatch);
+        
+        const networkInfo = {
+          httpPort: 4444, // По умолчанию
+          socksPort: 4447, // По умолчанию
+          bandwidth: 'L', // По умолчанию
+          externalPort: null
+        };
+        
+        // Сохраняем внешний порт отдельно (не используем как порты прокси)
+        if (externalAddressMatch && externalAddressMatch[1]) {
+          const port = parseInt(externalAddressMatch[1]);
+          networkInfo.externalPort = port;
+          console.log('🔍 Внешний порт найден:', port, '(НЕ используется как порт прокси)');
+        }
+        
+        // Если найдены Router Caps, используем их как пропускную способность
+        if (routerCapsMatch && routerCapsMatch[1]) {
+          networkInfo.bandwidth = routerCapsMatch[1];
+        }
+        
+        // Теперь читаем реальные порты прокси из конфигурационного файла
+        try {
+          const configPath = path.join(os.homedir(), '.i2pd', 'i2pd.conf');
+          if (fs.existsSync(configPath)) {
+            const configContent = fs.readFileSync(configPath, 'utf8');
+            
+            // Ищем порт HTTP прокси
+            const httpPortMatch = configContent.match(/\[httpproxy\][\s\S]*?port\s*=\s*(\d+)/i);
+            if (httpPortMatch) {
+              networkInfo.httpPort = parseInt(httpPortMatch[1]);
+              console.log('🔍 HTTP порт из конфига:', networkInfo.httpPort);
+            }
+            
+            // Ищем порт SOCKS прокси
+            const socksPortMatch = configContent.match(/\[socksproxy\][\s\S]*?port\s*=\s*(\d+)/i);
+            if (socksPortMatch) {
+              networkInfo.socksPort = parseInt(socksPortMatch[1]);
+              console.log('🔍 SOCKS порт из конфига:', networkInfo.socksPort);
+            } else {
+              // Если SOCKS порт не найден, используем стандартный
+              networkInfo.socksPort = 4447;
+              console.log('🔍 SOCKS порт не найден в конфиге, используем стандартный:', networkInfo.socksPort);
+            }
+          }
+        } catch (configError) {
+          console.log('⚠️ Ошибка чтения конфига для портов:', configError.message);
+        }
+        
+        console.log('✅ Информация о сети получена:', networkInfo);
+        resolve({ success: true, networkInfo });
+      });
+    });
+  } catch (error) {
+    console.log('❌ Ошибка получения информации о сети:', error.message);
+    return { success: false, error: 'Ошибка доступа к веб-консоли' };
+  }
+});
+
+// IPC: открытие веб-консоли i2pd
+registerHandler('open-web-console', async () => {
+  try {
+    console.log('🌐 Открытие веб-консоли i2pd...');
+    
+    // Проверяем, запущен ли демон
+    const status = await checkDaemonStatusInternal();
+    if (!status.isRunning) {
+      console.log('❌ Демон не запущен, веб-консоль недоступна');
+      return { success: false, error: 'Демон не запущен' };
+    }
+    
+    // Открываем веб-консоль в браузере по умолчанию
+    const webConsoleUrl = 'http://127.0.0.1:7070';
+    await shell.openExternal(webConsoleUrl);
+    
+    console.log('✅ Веб-консоль открыта:', webConsoleUrl);
+    return { success: true, url: webConsoleUrl };
+  } catch (error) {
+    console.log('❌ Ошибка открытия веб-консоли:', error.message);
+    return { success: false, error: error.message };
+  }
+});
+
+// IPC: обновление настроек трея
+registerHandler('update-tray-settings', async () => {
+  try {
+    console.log('🔄 Обновление настроек трея...');
+    updateDockVisibility();
+    return { success: true };
+  } catch (error) {
+    console.log('❌ Ошибка обновления настроек трея:', error.message);
+    return { success: false, error: error.message };
+  }
+});
+
+// IPC: сворачивание окна в трей
+registerHandler('minimize-to-tray', async () => {
+  try {
+    if (mainWindow) {
+      mainWindow.hide();
+      console.log('🔄 Окно свернуто в трей');
+      return { success: true };
+    }
+    return { success: false, error: 'Main window not found' };
+  } catch (error) {
+    console.log('❌ Ошибка сворачивания в трей:', error.message);
+    return { success: false, error: error.message };
   }
 });
 
@@ -935,7 +1208,7 @@ async function writeSettingsToConfig(settings) {
     
     // HTTP Proxy Port
     if (settings.httpPort !== undefined) {
-      const httpProxyRegex = /^(\[httpproxy\][\s\S]*?port\s*=\s*)\d+$/m;
+      const httpProxyRegex = /(\[httpproxy\][\s\S]*?port\s*=\s*)\d+/;
       if (httpProxyRegex.test(updatedConfig)) {
         updatedConfig = updatedConfig.replace(httpProxyRegex, `$1${settings.httpPort}`);
       } else {
@@ -947,7 +1220,7 @@ async function writeSettingsToConfig(settings) {
     
     // SOCKS Proxy Port
     if (settings.socksPort !== undefined) {
-      const socksProxyRegex = /^(\[socksproxy\][\s\S]*?port\s*=\s*)\d+$/m;
+      const socksProxyRegex = /(\[socksproxy\][\s\S]*?port\s*=\s*)\d+/;
       if (socksProxyRegex.test(updatedConfig)) {
         updatedConfig = updatedConfig.replace(socksProxyRegex, `$1${settings.socksPort}`);
       } else {
@@ -958,7 +1231,7 @@ async function writeSettingsToConfig(settings) {
     
     // Bandwidth
     if (settings.bandwidth !== undefined) {
-      const bandwidthRegex = /^(bandwidth\s*=\s*)[A-Z]$/m;
+      const bandwidthRegex = /(bandwidth\s*=\s*)[A-Z]/;
       if (bandwidthRegex.test(updatedConfig)) {
         updatedConfig = updatedConfig.replace(bandwidthRegex, `$1${settings.bandwidth}`);
       } else {
@@ -968,7 +1241,7 @@ async function writeSettingsToConfig(settings) {
     
     // IPv6
     if (settings.enableIPv6 !== undefined) {
-      const ipv6Regex = /^(ipv6\s*=\s*)(true|false)$/m;
+      const ipv6Regex = /(ipv6\s*=\s*)(true|false)/;
       if (ipv6Regex.test(updatedConfig)) {
         updatedConfig = updatedConfig.replace(ipv6Regex, `$1${settings.enableIPv6}`);
       } else {
@@ -978,7 +1251,7 @@ async function writeSettingsToConfig(settings) {
     
     // UPnP
     if (settings.enableUPnP !== undefined) {
-      const upnpRegex = /^(\[upnp\][\s\S]*?enabled\s*=\s*)(true|false)$/m;
+      const upnpRegex = /(\[upnp\][\s\S]*?enabled\s*=\s*)(true|false)/;
       if (upnpRegex.test(updatedConfig)) {
         updatedConfig = updatedConfig.replace(upnpRegex, `$1${settings.enableUPnP}`);
       } else {
@@ -989,7 +1262,7 @@ async function writeSettingsToConfig(settings) {
     
     // Log Level
     if (settings.logLevel !== undefined) {
-      const logLevelRegex = /^(loglevel\s*=\s*)(debug|info|warn|error|critical|none)$/m;
+      const logLevelRegex = /(loglevel\s*=\s*)(debug|info|warn|error|critical|none)/;
       if (logLevelRegex.test(updatedConfig)) {
         updatedConfig = updatedConfig.replace(logLevelRegex, `$1${settings.logLevel}`);
       } else {
@@ -999,7 +1272,7 @@ async function writeSettingsToConfig(settings) {
     
     // Floodfill
     if (settings.enableFloodfill !== undefined) {
-      const floodfillRegex = /^(floodfill\s*=\s*)(true|false)$/m;
+      const floodfillRegex = /(floodfill\s*=\s*)(true|false)/;
       if (floodfillRegex.test(updatedConfig)) {
         updatedConfig = updatedConfig.replace(floodfillRegex, `$1${settings.enableFloodfill}`);
       } else {
@@ -1009,7 +1282,7 @@ async function writeSettingsToConfig(settings) {
     
     // Transit (notransit - инвертированное значение)
     if (settings.enableTransit !== undefined) {
-      const transitRegex = /^(notransit\s*=\s*)(true|false)$/m;
+      const transitRegex = /(notransit\s*=\s*)(true|false)/;
       const transitValue = !settings.enableTransit; // Инвертируем
       if (transitRegex.test(updatedConfig)) {
         updatedConfig = updatedConfig.replace(transitRegex, `$1${transitValue}`);
@@ -1020,7 +1293,7 @@ async function writeSettingsToConfig(settings) {
     
     // Max Transit Tunnels
     if (settings.maxTransitTunnels !== undefined) {
-      const limitsRegex = /^(\[limits\][\s\S]*?transittunnels\s*=\s*)\d+$/m;
+      const limitsRegex = /(\[limits\][\s\S]*?transittunnels\s*=\s*)\d+/;
       if (limitsRegex.test(updatedConfig)) {
         updatedConfig = updatedConfig.replace(limitsRegex, `$1${settings.maxTransitTunnels}`);
       } else {
@@ -1042,7 +1315,10 @@ async function writeSettingsToConfig(settings) {
 
 // IPC: запись настроек в конфигурационный файл
 registerHandler('write-settings-to-config', async (event, settings) => {
-  return await writeSettingsToConfig(settings);
+  console.log('🔧 IPC: write-settings-to-config вызван с настройками:', settings);
+  const result = await writeSettingsToConfig(settings);
+  console.log('🔧 IPC: write-settings-to-config результат:', result);
+  return result;
 });
 
 // IPC: корректное завершение приложения (с остановкой демона)

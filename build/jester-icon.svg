@@ -1,0 +1,70 @@
+
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <!-- Фон с градиентом -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7C3AED;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#5B21B6;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="faceGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FEF3C7;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FDE68A;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="hatGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#DC2626;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#991B1B;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="sideHatGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#16A34A;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#15803D;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Фон -->
+  <rect width="256" height="256" fill="url(#bgGradient)" rx="32"/>
+  
+  <!-- Лицо шута -->
+  <ellipse cx="128" cy="140" rx="60" ry="80" fill="url(#faceGradient)" stroke="#1F2937" stroke-width="3"/>
+  
+  <!-- Глаза -->
+  <ellipse cx="110" cy="120" rx="8" ry="12" fill="#1F2937"/>
+  <ellipse cx="146" cy="120" rx="8" ry="12" fill="#1F2937"/>
+  
+  <!-- Блики в глазах -->
+  <ellipse cx="112" cy="118" rx="3" ry="4" fill="#FFFFFF"/>
+  <ellipse cx="148" cy="118" rx="3" ry="4" fill="#FFFFFF"/>
+  
+  <!-- Нос -->
+  <ellipse cx="128" cy="135" rx="4" ry="6" fill="#1F2937"/>
+  
+  <!-- Улыбка -->
+  <path d="M100 160 Q128 180 156 160" stroke="#1F2937" stroke-width="4" fill="none" stroke-linecap="round"/>
+  
+  <!-- Шляпа шута - центральная часть -->
+  <path d="M80 60 L128 20 L176 60 L170 100 L86 100 Z" fill="url(#hatGradient)" stroke="#1F2937" stroke-width="3"/>
+  
+  <!-- Левая боковая часть шляпы -->
+  <path d="M60 80 L86 60 L100 80 L86 100 Z" fill="url(#sideHatGradient)" stroke="#1F2937" stroke-width="3"/>
+  
+  <!-- Правая боковая часть шляпы -->
+  <path d="M156 60 L170 80 L184 80 L170 100 Z" fill="url(#sideHatGradient)" stroke="#1F2937" stroke-width="3"/>
+  
+  <!-- Колокольчики -->
+  <circle cx="90" cy="80" r="8" fill="#FCD34D" stroke="#1F2937" stroke-width="2"/>
+  <circle cx="128" cy="60" r="8" fill="#FCD34D" stroke="#1F2937" stroke-width="2"/>
+  <circle cx="166" cy="80" r="8" fill="#FCD34D" stroke="#1F2937" stroke-width="2"/>
+  <circle cx="128" cy="100" r="6" fill="#FCD34D" stroke="#1F2937" stroke-width="2"/>
+  
+  <!-- Детали колокольчиков -->
+  <circle cx="90" cy="80" r="3" fill="#F59E0B"/>
+  <circle cx="128" cy="60" r="3" fill="#F59E0B"/>
+  <circle cx="166" cy="80" r="3" fill="#F59E0B"/>
+  <circle cx="128" cy="100" r="2" fill="#F59E0B"/>
+  
+  <!-- Воротник -->
+  <path d="M80 200 Q128 220 176 200" stroke="#FCD34D" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <path d="M80 200 Q128 210 176 200" stroke="#F59E0B" stroke-width="4" fill="none" stroke-linecap="round"/>
+  
+  <!-- Тени для объема -->
+  <ellipse cx="128" cy="140" rx="60" ry="80" fill="none" stroke="#1F2937" stroke-width="1" opacity="0.3"/>
+</svg>

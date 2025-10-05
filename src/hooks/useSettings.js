@@ -50,6 +50,10 @@ export const useSettings = (electronAPI) => {
 
   // Сохранение настроек
   const saveSettings = useCallback(async (newSettings) => {
+    console.log('🚀🚀🚀 НАЧАЛО СОХРАНЕНИЯ НАСТРОЕК! 🚀🚀🚀');
+    console.log('📋 useSettings: newSettings:', newSettings);
+    console.log('📋 useSettings: current settings:', settings);
+    
     if (!electronAPI) {
       // В браузере сохраняем в localStorage
       try {
@@ -95,26 +99,75 @@ export const useSettings = (electronAPI) => {
         }
       }
       
-      // Если есть изменения настроек демона, записываем их в конфиг
+      console.log('🔍 Анализ изменений настроек демона:');
+      console.log('📋 Все настройки демона:', daemonSettings);
+      console.log('📋 Текущие настройки:', settings);
+      console.log('🔍 Измененные настройки:', changedDaemonSettings);
+      
+      // Если есть изменения в настройках демона, записываем их в конфиг
+      console.log('🔍 Проверяем изменения настроек демона...');
+      console.log('📋 Все настройки демона:', daemonSettings);
+      console.log('📋 Текущие настройки:', settings);
+      console.log('📋 Новые настройки:', newSettings);
+      console.log('🔍 Измененные настройки:', changedDaemonSettings);
+      console.log('🔍 Количество изменений:', Object.keys(changedDaemonSettings).length);
+      
       if (Object.keys(changedDaemonSettings).length > 0) {
         console.log('📝 Записываем изменения настроек в конфиг:', changedDaemonSettings);
+        console.log('🔧 Вызываем IPC write-settings-to-config...');
         
         const configResult = await electronAPI.invoke('write-settings-to-config', changedDaemonSettings);
+        console.log('🔧 IPC write-settings-to-config вернул:', configResult);
+        
         if (!configResult.success) {
           throw new Error(`Ошибка записи в конфиг: ${configResult.error}`);
         }
         
         console.log('✅ Настройки успешно записаны в конфиг');
         
-        // Проверяем, запущен ли демон
+        // ========================================
+        // 🔄 ПЕРЕЗАПУСК ДЕМОНА ПОСЛЕ СОХРАНЕНИЯ
+        // ========================================
+        console.log('🔍 Проверяем статус демона...');
         const statusResult = await electronAPI.invoke('check-daemon-status');
+        console.log('📊 Статус демона:', statusResult);
+        
         if (statusResult.isRunning) {
-          console.log('🔄 Демон запущен, требуется перезапуск для применения настроек');
+          console.log('🔄🔄🔄 ДЕМОН ЗАПУЩЕН - НАЧИНАЕМ ПЕРЕЗАПУСК! 🔄🔄🔄');
+          const restartResult = await electronAPI.invoke('restart-daemon');
+          console.log('🔧 restart-daemon вернул:', restartResult);
+          
+          if (restartResult.success) {
+            console.log('✅✅✅ ДЕМОН УСПЕШНО ПЕРЕЗАПУЩЕН! ✅✅✅');
+            console.log('🎉🎉🎉 НАСТРОЙКИ ПРИМЕНЕНЫ И ДЕМОН ПЕРЕЗАПУЩЕН! 🎉🎉🎉');
+            console.log('✨ Все изменения вступили в силу! ✨');
+          } else {
+            console.error('❌❌❌ ОШИБКА ПЕРЕЗАПУСКА ДЕМОНА! ❌❌❌', restartResult.error);
+            throw new Error(`Ошибка перезапуска демона: ${restartResult.error}`);
+          }
         } else {
-          console.log('ℹ️ Демон не запущен, настройки будут применены при следующем запуске');
+          console.log('ℹ️ Демон не запущен, перезапуск не требуется');
         }
+        // ========================================
       } else {
         console.log('ℹ️ Нет изменений настроек демона, конфиг не обновляется');
+      }
+      
+      // Обновляем настройки трея если изменились соответствующие параметры
+      const traySettingsChanged = (
+        newSettings.minimizeToTray !== settings.minimizeToTray ||
+        newSettings.closeToTray !== settings.closeToTray ||
+        newSettings.hideFromDock !== settings.hideFromDock
+      );
+      
+      if (traySettingsChanged) {
+        console.log('🔄 Обновляем настройки трея...');
+        try {
+          await electronAPI.invoke('update-tray-settings');
+          console.log('✅ Настройки трея обновлены');
+        } catch (error) {
+          console.error('❌ Ошибка обновления настроек трея:', error);
+        }
       }
       
       setSettings(newSettings);
@@ -161,8 +214,8 @@ export const useSettings = (electronAPI) => {
     }
     
     // Валидация максимальных туннелей
-    if (settingsToValidate.maxTransitTunnels < 100 || settingsToValidate.maxTransitTunnels > 50000) {
-      errors.maxTransitTunnels = t('Maximum tunnels must be between 100 and 50000');
+    if (settingsToValidate.maxTransitTunnels < 0 || settingsToValidate.maxTransitTunnels > 50) {
+      errors.maxTransitTunnels = t('Maximum tunnels must be between 0 and 50');
     }
     
     return errors;

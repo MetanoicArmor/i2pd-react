@@ -1,5 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
+console.log('🚀 PRELOAD.JS ЗАГРУЖЕН!');
+
 // Предоставляем безопасный API для React приложения
 contextBridge.exposeInMainWorld('electronAPI', {
   // Управление демоном
@@ -28,3 +30,4 @@ contextBridge.exposeInMainWorld('electronAPI', {
   platform: process.platform,
   versions: process.versions
 });
+

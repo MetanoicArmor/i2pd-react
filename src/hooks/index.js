@@ -195,3 +195,10 @@ export const useError = () => {
   };
 };
 
+// Экспорт всех хуков
+export { useElectron } from './useElectron';
+export { useSettings } from './useSettings';
+export { useI2pdManager } from './useI2pdManager';
+export { useNetworkMonitoring } from './useNetworkMonitoring';
+export { useNetworkInfo } from './useNetworkInfo';
+

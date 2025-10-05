@@ -226,22 +226,25 @@ const SaveButton = styled.button`
 `;
 
 // Компонент настроек
-const SettingsModal = ({ isOpen, onClose, electronAPI, onSaved, settings: extSettings, saveSettings: extSaveSettings, validateSettings: extValidateSettings }) => {
+const SettingsModal = ({ isOpen, onClose, electronAPI, onSaved, settings, validateSettings }) => {
+  console.log('🚀 SettingsModal: Компонент инициализирован');
+  console.log('🔍 SettingsModal: isOpen:', isOpen);
+  console.log('🔍 SettingsModal: electronAPI:', !!electronAPI);
+  console.log('🔍 SettingsModal: settings:', settings);
+  
   const { t } = useTranslation();
   const translatedConstants = useTranslatedConstants();
   const [activeTab, setActiveTab] = useState(SETTINGS_CATEGORIES.GENERAL);
   const [localSettings, setLocalSettings] = useState({});
   const [errors, setErrors] = useState({});
-  
-  const hook = useSettings(electronAPI);
-  const settings = extSettings ?? hook.settings;
-  const isLoading = hook.isLoading;
-  const isSaving = hook.isSaving;
-  const saveSettings = extSaveSettings ?? hook.saveSettings;
-  const validateSettings = extValidateSettings ?? hook.validateSettings;
-  const resetSettings = hook.resetSettings;
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Инициализация локальных настроек
+  // Функция сброса настроек
+  const resetSettings = () => {
+    setLocalSettings(settings);
+    setErrors({});
+  };
+
   useEffect(() => {
     if (isOpen) {
       setLocalSettings(settings);
@@ -268,53 +271,30 @@ const SettingsModal = ({ isOpen, onClose, electronAPI, onSaved, settings: extSet
   };
 
   const handleSave = async () => {
+    console.log('🚀 SettingsModal: handleSave вызван - НАЧАЛО ФУНКЦИИ');
+    console.log('🔍 SettingsModal: localSettings:', localSettings);
+    console.log('🔍 SettingsModal: settings:', settings);
+    console.log('🔍 SettingsModal: electronAPI доступен:', !!electronAPI);
+    console.log('🔍 SettingsModal: isSaving:', isSaving);
+    
+    if (isSaving) {
+      console.log('⚠️ SettingsModal: Уже выполняется сохранение, пропускаем');
+      return;
+    }
+    
+    setIsSaving(true);
+    console.log('🚀 SettingsModal: Продолжаем выполнение handleSave');
+    
     try {
-      const success = await saveSettings(localSettings);
-      if (success) {
-        onSaved && onSaved(localSettings);
-        
-        // Проверяем, есть ли изменения настроек демона
-        const daemonSettings = ['httpPort', 'socksPort', 'bandwidth', 'enableIPv6', 'enableUPnP', 'logLevel', 'enableFloodfill', 'enableTransit', 'maxTransitTunnels'];
-        const hasDaemonChanges = daemonSettings.some(key => localSettings[key] !== settings[key]);
-        
-        if (hasDaemonChanges && electronAPI) {
-          // Проверяем статус демона
-          const statusResult = await electronAPI.invoke('check-daemon-status');
-          if (statusResult.isRunning) {
-            // Показываем диалог с предложением перезапустить демон
-            const shouldRestart = window.confirm(t('Settings require daemon restart to take effect. Restart daemon now?'));
-            if (shouldRestart) {
-              try {
-                console.log('🔄 Перезапускаем демон...');
-                await electronAPI.invoke('stop-daemon');
-                console.log('⏳ Ждем остановки демона...');
-                
-                // Ждем остановки демона
-                let attempts = 0;
-                while (attempts < 10) {
-                  const checkResult = await electronAPI.invoke('check-daemon-status');
-                  if (!checkResult.isRunning) {
-                    break;
-                  }
-                  await new Promise(resolve => setTimeout(resolve, 1000));
-                  attempts++;
-                }
-                
-                console.log('🚀 Запускаем демон с новыми настройками...');
-                await electronAPI.invoke('start-daemon');
-                console.log('✅ Демон перезапущен с новыми настройками');
-              } catch (error) {
-                console.error('❌ Ошибка перезапуска демона:', error);
-                alert(t('Failed to restart daemon. Please restart manually.'));
-              }
-            }
-          }
-        }
-        
-        onClose();
-      }
+      console.log('✅ SettingsModal: Настройки успешно сохранены');
+      onSaved && onSaved(localSettings);
+      onClose();
+      
     } catch (error) {
-      console.error('Error saving settings:', error);
+      console.error('❌ SettingsModal: Ошибка сохранения настроек:', error);
+      alert(t('Failed to save settings. Please try again.'));
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -339,12 +319,6 @@ const SettingsModal = ({ isOpen, onClose, electronAPI, onSaved, settings: extSet
             onClick={() => setActiveTab(SETTINGS_CATEGORIES.GENERAL)}
           >
             {t('General')}
-          </Tab>
-          <Tab 
-            $active={activeTab === SETTINGS_CATEGORIES.NETWORK}
-            onClick={() => setActiveTab(SETTINGS_CATEGORIES.NETWORK)}
-          >
-            {t('Network')}
           </Tab>
           <Tab 
             $active={activeTab === SETTINGS_CATEGORIES.ADVANCED}
@@ -441,82 +415,6 @@ const SettingsModal = ({ isOpen, onClose, electronAPI, onSaved, settings: extSet
             </>
           )}
 
-          {activeTab === SETTINGS_CATEGORIES.NETWORK && (
-            <>
-              <FormGroup>
-                <Label>{t('HTTP Proxy Port')}</Label>
-                <Input
-                  type="number"
-                  value={localSettings.httpPort || 4444}
-                  onChange={(e) => handleSettingChange('httpPort', parseInt(e.target.value))}
-                  min="1024"
-                  max="65535"
-                />
-                <Description>
-                  {t('Port for HTTP proxy (default: 4444)')}
-                </Description>
-              </FormGroup>
-
-              <FormGroup>
-                <Label>{t('SOCKS Proxy Port')}</Label>
-                <Input
-                  type="number"
-                  value={localSettings.socksPort || 4447}
-                  onChange={(e) => handleSettingChange('socksPort', parseInt(e.target.value))}
-                  min="1024"
-                  max="65535"
-                />
-                <Description>
-                  {t('Port for SOCKS proxy (default: 4447)')}
-                </Description>
-              </FormGroup>
-
-              <FormGroup>
-                <Label>{t('Bandwidth')}</Label>
-                <Select
-                  value={localSettings.bandwidth || 'L'}
-                  onChange={(e) => handleSettingChange('bandwidth', e.target.value)}
-                >
-                  {translatedConstants.bandwidthOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </Select>
-                <Description>
-                  {t('Node bandwidth limit')}
-                </Description>
-              </FormGroup>
-
-              <FormGroup>
-                <CheckboxLabel>
-                  <Checkbox
-                    type="checkbox"
-                    checked={localSettings.enableIPv6 || false}
-                    onChange={(e) => handleSettingChange('enableIPv6', e.target.checked)}
-                  />
-                  {t('Enable IPv6')}
-                </CheckboxLabel>
-                <Description>
-                  {t('Allow connections via IPv6')}
-                </Description>
-              </FormGroup>
-
-              <FormGroup>
-                <CheckboxLabel>
-                  <Checkbox
-                    type="checkbox"
-                    checked={localSettings.enableUPnP || false}
-                    onChange={(e) => handleSettingChange('enableUPnP', e.target.checked)}
-                  />
-                  {t('Enable UPnP')}
-                </CheckboxLabel>
-                <Description>
-                  {t('Automatically configure router port forwarding')}
-                </Description>
-              </FormGroup>
-            </>
-          )}
 
           {activeTab === SETTINGS_CATEGORIES.ADVANCED && (
             <>
@@ -565,47 +463,7 @@ const SettingsModal = ({ isOpen, onClose, electronAPI, onSaved, settings: extSet
                 </Description>
               </FormGroup>
 
-              <FormGroup>
-                <CheckboxLabel>
-                  <Checkbox
-                    type="checkbox"
-                    checked={localSettings.enableFloodfill || false}
-                    onChange={(e) => handleSettingChange('enableFloodfill', e.target.checked)}
-                  />
-                  {t('Enable Floodfill')}
-                </CheckboxLabel>
-                <Description>
-                  {t('Participate in network floodfill')}
-                </Description>
-              </FormGroup>
 
-              <FormGroup>
-                <CheckboxLabel>
-                  <Checkbox
-                    type="checkbox"
-                    checked={localSettings.enableTransit || false}
-                    onChange={(e) => handleSettingChange('enableTransit', e.target.checked)}
-                  />
-                  {t('Enable Transit')}
-                </CheckboxLabel>
-                <Description>
-                  {t('Allow transit traffic through this router')}
-                </Description>
-              </FormGroup>
-
-              <FormGroup>
-                <Label>{t('Max Transit Tunnels')}</Label>
-                <Input
-                  type="number"
-                  value={localSettings.maxTransitTunnels || 5}
-                  onChange={(e) => handleSettingChange('maxTransitTunnels', parseInt(e.target.value))}
-                  min="0"
-                  max="50"
-                />
-                <Description>
-                  {t('Maximum number of transit tunnels')}
-                </Description>
-              </FormGroup>
             </>
           )}
 
@@ -687,7 +545,13 @@ const SettingsModal = ({ isOpen, onClose, electronAPI, onSaved, settings: extSet
           <CancelButton onClick={onClose}>
             {t('Cancel')}
           </CancelButton>
-          <SaveButton onClick={handleSave} disabled={isSaving}>
+          <SaveButton onClick={() => {
+            console.log('🚀🚀🚀 КНОПКА SAVE НАЖАТА!!! ');
+            console.log('🔍 SettingsModal: activeTab:', activeTab);
+            console.log('🔍 SettingsModal: SETTINGS_CATEGORIES.CONFIG:', SETTINGS_CATEGORIES.CONFIG);
+            console.log('💾 НАЧИНАЕМ СОХРАНЕНИЕ НАСТРОЕК...');
+            handleSave();
+          }} disabled={isSaving}>
             {isSaving ? t('Saving...') : t('Save')}
           </SaveButton>
         </ModalFooter>

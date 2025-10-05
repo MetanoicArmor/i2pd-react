@@ -1,7 +1,6 @@
 // Константы для настроек приложения
 export const SETTINGS_CATEGORIES = {
   GENERAL: 'general',
-  NETWORK: 'network',
   ADVANCED: 'advanced',
   APPEARANCE: 'appearance',
   CONFIG: 'config'

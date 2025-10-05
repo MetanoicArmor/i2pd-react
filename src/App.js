@@ -11,9 +11,11 @@ import NetworkMonitoring from './components/NetworkMonitoring';
 import { useElectron } from './hooks/useElectron';
 import { useSettings } from './hooks/useSettings';
 import { useNetworkMonitoring } from './hooks/useNetworkMonitoring';
+import { useNetworkInfo } from './hooks/useNetworkInfo';
 
 // Константы
 import { DEFAULT_SETTINGS } from './constants/settings';
+import { IPC_CHANNELS } from './constants';
 
 // Простые темы
 const lightTheme = {
@@ -95,6 +97,8 @@ const Header = styled.div`
   padding: 20px;
   background: ${props => props.theme.colors.surface};
   border-bottom: 1px solid ${props => props.theme.colors.border};
+  -webkit-app-region: drag;
+  user-select: none;
 `;
 
 const Title = styled.h1`
@@ -108,6 +112,7 @@ const HeaderButtons = styled.div`
   display: flex;
   align-items: center;
   gap: 12px;
+  -webkit-app-region: no-drag;
 `;
 
 const StatusIndicator = styled.div`
@@ -221,6 +226,9 @@ const App = () => {
   const { isElectron, electronAPI } = useElectron();
   const settingsHook = useSettings(electronAPI);
   const settings = settingsHook.settings;
+  
+  // Информация о сети из веб-консоли
+  const { networkInfo, isLoading: networkInfoLoading, error: networkInfoError } = useNetworkInfo(electronAPI);
   
   // Мониторинг сети
   const { 
@@ -418,6 +426,27 @@ const App = () => {
     }
   };
 
+  // Открытие веб-консоли i2pd
+  const openWebConsole = async () => {
+    if (!isElectron || !electronAPI) {
+      addLog('error', t('Electron API not available'));
+      return;
+    }
+
+    try {
+      addLog('info', t('Opening web console...'));
+      const result = await electronAPI.invoke(IPC_CHANNELS.OPEN_WEB_CONSOLE);
+      
+      if (result.success) {
+        addLog('info', `${t('Web console opened')}: ${result.url}`);
+      } else {
+        addLog('error', `${t('Failed to open web console')}: ${result.error}`);
+      }
+    } catch (error) {
+      addLog('error', `${t('Web console error')}: ${error.message}`);
+    }
+  };
+
   // Получение версии демона
   // Получение версии демона (с throttling)
   const fetchDaemonVersion = async () => {
@@ -477,6 +506,18 @@ const App = () => {
               addLog('error', `${t('Auto-start error')}: ${error.message}`);
             }
           }, 3000);
+        }
+        
+        // Запуск в свернутом виде если включен
+        if (settings.startMinimized) {
+          setTimeout(async () => {
+            try {
+              await electronAPI.invoke('minimize-to-tray');
+              addLog('info', t('Application started minimized'));
+            } catch (error) {
+              addLog('error', `${t('Minimize error')}: ${error.message}`);
+            }
+          }, 1000);
         }
       }
     };
@@ -541,6 +582,9 @@ const App = () => {
             <Button onClick={() => setShowSettings(true)}>
               ⚙️ {t('Settings')}
             </Button>
+            <Button onClick={openWebConsole} disabled={!isRunning}>
+              🌐 {t('Web Console')}
+            </Button>
             <Button onClick={() => electronAPI?.invoke('quit-app')}>
               {t('Quit')}
             </Button>
@@ -565,8 +609,8 @@ const App = () => {
 
           {/* Управление демоном */}
           <Card>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '16px' }}>{t('Manage Daemon')}</h3>
-            <div style={{ display: 'flex', gap: '12px' }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', textAlign: 'center' }}>{t('Manage Daemon')}</h3>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
               <ControlButton 
                 onClick={startDaemon} 
                 disabled={isRunning || operationInProgress}
@@ -624,9 +668,14 @@ const App = () => {
             <p style={{ margin: '8px 0 0 0', color: '#8E8E93' }}>{t('Operation')}: {operationInProgress ? t('In progress') : t('System ready')}</p>
             <p style={{ margin: '8px 0 0 0', color: '#8E8E93' }}>{t('App Theme')}: {settings.theme === 'dark' ? t('Dark') : t('Light')}</p>
             <p style={{ margin: '8px 0 0 0', color: '#8E8E93' }}>{t('Auto-start Daemon')}: {settings.autoStartDaemon ? t('Enabled') : t('Disabled')}</p>
-            <p style={{ margin: '8px 0 0 0', color: '#8E8E93' }}>HTTP: {settings.httpPort || 4444}</p>
-            <p style={{ margin: '8px 0 0 0', color: '#8E8E93' }}>SOCKS: {settings.socksPort || 4447}</p>
-            <p style={{ margin: '8px 0 0 0', color: '#8E8E93' }}>{t('Bandwidth')}: {settings.bandwidth || 'L'}</p>
+            <p style={{ margin: '8px 0 0 0', color: '#8E8E93' }}>
+              HTTP: {networkInfoLoading ? '...' : (networkInfo.httpPort || 4444)}
+              {networkInfoError && <span style={{ color: '#FF3B30', fontSize: '12px' }}> (ошибка)</span>}
+            </p>
+            <p style={{ margin: '8px 0 0 0', color: '#8E8E93' }}>
+              SOCKS: {networkInfoLoading ? '...' : (networkInfo.socksPort || 4447)}
+              {networkInfoError && <span style={{ color: '#FF3B30', fontSize: '12px' }}> (ошибка)</span>}
+            </p>
             <p style={{ margin: '8px 0 0 0', color: '#8E8E93' }}>{t('Refresh')}: {(settings.updateInterval || 5)} s</p>
           </Card>
         </Content>
@@ -636,9 +685,20 @@ const App = () => {
           onClose={() => setShowSettings(false)}
           electronAPI={electronAPI}
           settings={settingsHook.settings}
-          saveSettings={settingsHook.saveSettings}
           validateSettings={settingsHook.validateSettings}
-          onSaved={(newSettings) => {
+          onSaved={async (newSettings) => {
+            console.log('🚀🚀🚀 APP: onSaved ВЫЗВАН С НАСТРОЙКАМИ! 🚀🚀🚀');
+            console.log('📋 App: newSettings:', newSettings);
+            
+            // Обновляем настройки в хуке
+            try {
+              console.log('🔄 App: Вызываем settingsHook.saveSettings...');
+              await settingsHook.saveSettings(newSettings);
+              console.log('✅✅✅ APP: НАСТРОЙКИ УСПЕШНО СОХРАНЕНЫ В ХУКЕ! ✅✅✅');
+            } catch (error) {
+              console.error('❌❌❌ APP: ОШИБКА СОХРАНЕНИЯ НАСТРОЕК В ХУКЕ! ❌❌❌', error);
+            }
+            
             // мгновенно переключаем тему без перезапуска
             if (newSettings && newSettings.theme) {
               // Ничего не делаем здесь — ThemeProvider получает значения из settingsHook

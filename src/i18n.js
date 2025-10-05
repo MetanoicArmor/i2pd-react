@@ -29,11 +29,22 @@ const resources = {
       "Yes": "Yes",
       "No": "No",
       
-      // Кнопки управления
-      "Start": "Start",
-      "Stop": "Stop",
-      "Restart": "Restart",
+        // Кнопки управления
+        "Start": "Start",
+        "Stop": "Stop",
+        "Restart": "Restart",
+        "I2P Daemon Control": "I2P Daemon Control",
+        "Starting...": "Starting...",
+        "Stopping...": "Stopping...",
+        "Restarting...": "Restarting...",
       "Settings": "Settings",
+      "Web Console": "Web Console",
+      "Opening web console...": "Opening web console...",
+      "Web console opened": "Web console opened",
+      "Failed to open web console": "Failed to open web console",
+      "Web console error": "Web console error",
+      "Application started minimized": "Application started minimized",
+      "Minimize error": "Minimize error",
       "Refresh": "Refresh",
       "Clear": "Clear",
       "Minimize to Tray": "Minimize to Tray",
@@ -128,6 +139,17 @@ const resources = {
       "Settings require daemon restart to take effect": "Settings require daemon restart to take effect",
       "Settings require daemon restart to take effect. Restart daemon now?": "Settings require daemon restart to take effect. Restart daemon now?",
       "Failed to restart daemon. Please restart manually.": "Failed to restart daemon. Please restart manually.",
+      
+      // Daemon restart dialog
+      "Daemon Restart": "Daemon Restart",
+      "Daemon settings changed": "Daemon settings changed",
+      "To apply changes, daemon restart is required. Restart now?": "To apply changes, daemon restart is required. Restart now?",
+      "Restart now": "Restart now",
+      "Restart later": "Restart later",
+      "Cancel": "Cancel",
+      "Settings saved": "Settings saved",
+      "Settings saved to configuration file": "Settings saved to configuration file",
+      "To apply changes, restart daemon manually through control menu.": "To apply changes, restart daemon manually through control menu.",
       
       // Settings Modal
       "Settings": "Settings",
@@ -322,11 +344,22 @@ const resources = {
       "Yes": "Да",
       "No": "Нет",
       
-      // Кнопки управления
-      "Start": "Запустить",
-      "Stop": "Остановить",
-      "Restart": "Перезапустить",
+        // Кнопки управления
+        "Start": "Запустить",
+        "Stop": "Остановить",
+        "Restart": "Перезапустить",
+        "I2P Daemon Control": "Управление демоном I2P",
+        "Starting...": "Запуск...",
+        "Stopping...": "Остановка...",
+        "Restarting...": "Перезапуск...",
       "Settings": "Настройки",
+      "Web Console": "Веб-консоль",
+      "Opening web console...": "Открытие веб-консоли...",
+      "Web console opened": "Веб-консоль открыта",
+      "Failed to open web console": "Не удалось открыть веб-консоль",
+      "Web console error": "Ошибка веб-консоли",
+      "Application started minimized": "Приложение запущено в свернутом виде",
+      "Minimize error": "Ошибка сворачивания",
       "Refresh": "Обновить",
       "Clear": "Очистить",
       "Minimize to Tray": "Свернуть в трей",
@@ -421,6 +454,17 @@ const resources = {
       "Settings require daemon restart to take effect": "Настройки требуют перезапуска демона для применения",
       "Settings require daemon restart to take effect. Restart daemon now?": "Настройки требуют перезапуска демона для применения. Перезапустить демон сейчас?",
       "Failed to restart daemon. Please restart manually.": "Не удалось перезапустить демон. Перезапустите вручную.",
+      
+      // Daemon restart dialog
+      "Daemon Restart": "Перезапуск демона",
+      "Daemon settings changed": "Настройки демона изменены",
+      "To apply changes, daemon restart is required. Restart now?": "Для применения изменений необходимо перезапустить демон. Перезапустить сейчас?",
+      "Restart now": "Перезапустить сейчас",
+      "Restart later": "Перезапустить позже",
+      "Cancel": "Отмена",
+      "Settings saved": "Настройки сохранены",
+      "Settings saved to configuration file": "Настройки сохранены в конфигурационный файл",
+      "To apply changes, restart daemon manually through control menu.": "Для применения изменений перезапустите демон вручную через меню управления.",
       
       // Settings Modal
       "Settings": "Настройки",
