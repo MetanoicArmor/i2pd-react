@@ -14,11 +14,7 @@
     "electron-dev": "ELECTRON_IS_DEV=1 electron .",
     "electron-pack": "electron-builder",
     "preelectron-pack": "npm run build",
-    "dist": "npm run build && electron-builder",
-    "dist-mac": "npm run build && electron-builder --mac",
-    "dist-mac-arm64": "npm run build && electron-builder --mac --arm64",
-    "dist-mac-x64": "npm run build && electron-builder --mac --x64",
-    "dist-mac-universal": "npm run build && electron-builder --mac --universal",
+    "dist": "npm run build && electron-builder --linux",
     "dist-linux": "npm run build && electron-builder --linux"
   },
   "keywords": [
@@ -79,27 +75,17 @@
       "public/preload.js",
       "public/icon.png",
       "public/tray-icon.png",
-      "Mac/i2pd",
       "Lin/i2pd",
       "node_modules/**/*"
     ],
     "extraResources": [
       {
-        "from": "Mac/i2pd",
-        "to": "Mac/i2pd"
-      },
-      {
         "from": "Lin/i2pd",
         "to": "Lin/i2pd"
       }
     ],
-    "mac": {
-      "category": "public.app-category.network",
-      "target": ["dmg", "zip"],
-      "icon": "public/icon-512.png"
-    },
     "linux": {
-      "target": "AppImage",
+      "target": ["AppImage", "deb"],
       "icon": "assets/icon.png",
       "category": "Network"
     }
