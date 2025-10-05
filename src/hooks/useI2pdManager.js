@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
+import { IPC_CHANNELS } from '../constants';
 
 // Хук для управления I2P демоном
 export function useI2pdManager() {
@@ -51,7 +52,7 @@ export function useI2pdManager() {
       // В Electron используем IPC для выполнения команд
       if (window.electronAPI) {
         try {
-          const result = await window.electronAPI.invoke('check-daemon-status');
+          const result = await window.electronAPI.invoke(IPC_CHANNELS.CHECK_DAEMON_STATUS);
           if (result && result.success !== false) {
             setIsRunning(result.isRunning || false);
             setUptime(result.uptime || '00:00:00');
@@ -113,7 +114,7 @@ export function useI2pdManager() {
     try {
       if (window.electronAPI) {
         try {
-          const result = await window.electronAPI.invoke('start-daemon');
+          const result = await window.electronAPI.invoke(IPC_CHANNELS.START_DAEMON);
           if (result && result.success) {
             setIsRunning(true);
             addLog('info', 'Демон успешно запущен');
@@ -167,7 +168,7 @@ export function useI2pdManager() {
     try {
       if (window.electronAPI) {
         try {
-          const result = await window.electronAPI.invoke('stop-daemon');
+          const result = await window.electronAPI.invoke(IPC_CHANNELS.STOP_DAEMON);
           if (result && result.success) {
             setIsRunning(false);
             addLog('info', 'Демон остановлен');
@@ -231,7 +232,7 @@ export function useI2pdManager() {
     
     try {
       if (window.electronAPI) {
-        const result = await window.electronAPI.invoke('get-daemon-stats');
+        const result = await window.electronAPI.invoke(IPC_CHANNELS.GET_DAEMON_STATS);
         if (result.success) {
           setPeerCount(result.peerCount || 0);
           setBytesReceived(result.bytesReceived || 0);
@@ -259,16 +260,25 @@ export function useI2pdManager() {
   const fetchDaemonVersion = useCallback(async () => {
     try {
       if (window.electronAPI) {
-        const result = await window.electronAPI.invoke('get-daemon-version');
-        if (result.success) {
-          setDaemonVersion(result.version || '—');
+        // Проверяем статус демона перед запросом версии
+        const statusResult = await window.electronAPI.invoke(IPC_CHANNELS.CHECK_DAEMON_STATUS);
+        if (statusResult && statusResult.isRunning) {
+          const result = await window.electronAPI.invoke(IPC_CHANNELS.GET_DAEMON_VERSION);
+          if (result.success) {
+            setDaemonVersion(result.version || '—');
+          }
+        } else {
+          setDaemonVersion('—');
         }
       } else {
         setDaemonVersion('2.58.0 (mock)');
       }
     } catch (error) {
       console.error('Error in fetchDaemonVersion:', error);
-      addLog('error', `Ошибка получения версии: ${error.message}`);
+      // Не добавляем ошибку в логи, если демон просто не запущен
+      if (error.message && !error.message.includes('не запущен')) {
+        addLog('error', `Ошибка получения версии: ${error.message}`);
+      }
     }
   }, [addLog]);
 

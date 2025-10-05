@@ -670,11 +670,13 @@ const App = () => {
             <p style={{ margin: '8px 0 0 0', color: '#8E8E93' }}>{t('Auto-start Daemon')}: {settings.autoStartDaemon ? t('Enabled') : t('Disabled')}</p>
             <p style={{ margin: '8px 0 0 0', color: '#8E8E93' }}>
               HTTP: {networkInfoLoading ? '...' : (networkInfo.httpPort || 4444)}
-              {networkInfoError && <span style={{ color: '#FF3B30', fontSize: '12px' }}> (ошибка)</span>}
+              {networkInfoError && !isRunning && <span style={{ color: '#FF9F0A', fontSize: '12px' }}> (демон не запущен)</span>}
+              {networkInfoError && isRunning && <span style={{ color: '#FF3B30', fontSize: '12px' }}> (ошибка)</span>}
             </p>
             <p style={{ margin: '8px 0 0 0', color: '#8E8E93' }}>
               SOCKS: {networkInfoLoading ? '...' : (networkInfo.socksPort || 4447)}
-              {networkInfoError && <span style={{ color: '#FF3B30', fontSize: '12px' }}> (ошибка)</span>}
+              {networkInfoError && !isRunning && <span style={{ color: '#FF9F0A', fontSize: '12px' }}> (демон не запущен)</span>}
+              {networkInfoError && isRunning && <span style={{ color: '#FF3B30', fontSize: '12px' }}> (ошибка)</span>}
             </p>
             <p style={{ margin: '8px 0 0 0', color: '#8E8E93' }}>{t('Refresh')}: {(settings.updateInterval || 5)} s</p>
           </Card>

@@ -31,6 +31,7 @@ export const IPC_CHANNELS = {
   RESTART_DAEMON: 'restart-daemon',
   GET_DAEMON_VERSION: 'get-daemon-version',
   GET_DAEMON_NETWORK_INFO: 'get-daemon-network-info',
+  GET_DAEMON_STATS: 'get-daemon-stats',
   OPEN_WEB_CONSOLE: 'open-web-console',
   UPDATE_TRAY_SETTINGS: 'update-tray-settings',
   UPDATE_TRAY_STATUS: 'update-tray-status',
