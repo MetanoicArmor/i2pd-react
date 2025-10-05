@@ -1088,7 +1088,7 @@ function getI2pdConfigDir() {
   
   switch (process.platform) {
     case 'darwin': // macOS
-      return path.join(homeDir, '.i2pd');
+      return path.join(homeDir, 'Library', 'Application Support', 'i2pd');
     case 'win32': // Windows
       return path.join(homeDir, 'AppData', 'Roaming', 'i2pd');
     case 'linux': // Linux
