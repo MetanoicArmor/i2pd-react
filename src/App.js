@@ -106,6 +106,8 @@ const Title = styled.h1`
   font-weight: 600;
   color: ${props => props.theme.colors.text};
   margin: 0;
+  flex: 1;
+  text-align: center;
 `;
 
 const HeaderButtons = styled.div`

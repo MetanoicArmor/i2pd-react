@@ -178,42 +178,60 @@ function createWindow() {
 // Создание трея
 async function createTray() {
   try {
-    const iconPath = path.join(__dirname, 'tray-icon.png');
     let image = null;
 
-    // Пытаемся загрузить с диска валидный PNG
-    if (fs.existsSync(iconPath)) {
-      try {
-        const stats = fs.statSync(iconPath);
-        if (stats && stats.size >= 512) {
-          const fileImage = nativeImage.createFromPath(iconPath);
-          if (fileImage && !fileImage.isEmpty()) {
-            image = fileImage;
+    // Список возможных путей к иконке трея
+    const possibleIconPaths = [
+      path.join(__dirname, 'tray-icon.png'),                    // В public/ (dev mode)
+      path.join(process.resourcesPath, 'app.asar.unpacked', 'public', 'tray-icon.png'), // В упакованном приложении
+      path.join(process.resourcesPath, 'public', 'tray-icon.png'), // Альтернативный путь
+      path.join(__dirname, '..', 'public', 'tray-icon.png'),   // Из build/
+      path.join(__dirname, 'icon.png'),                         // Основная иконка как fallback
+    ];
+
+    // Пытаемся загрузить PNG из возможных путей
+    for (const iconPath of possibleIconPaths) {
+      if (fs.existsSync(iconPath)) {
+        try {
+          const stats = fs.statSync(iconPath);
+          if (stats && stats.size >= 512) {
+            const fileImage = nativeImage.createFromPath(iconPath);
+            if (fileImage && !fileImage.isEmpty()) {
+              // Изменяем размер для трея (22x22 для macOS)
+              image = fileImage.resize({ width: 22, height: 22 });
+              console.log('✅ Tray icon loaded from:', iconPath);
+              break;
+            }
           }
-        } else {
-          console.log('Tray icon too small, will use fallback');
+        } catch (e) {
+          console.log('⚠️ Failed to load tray icon from:', iconPath, e.message);
         }
-      } catch (_) {
-        console.log('Tray icon read failed, will use fallback');
       }
-    } else {
-      console.log('Tray icon not found, will use fallback');
     }
 
     // Попытка: SVG из корня репозитория (предпочтительно)
     if (!image) {
-      const svgPath = path.join(__dirname, '..', 'theatermasks.fill.svg');
-      if (fs.existsSync(svgPath)) {
-        try {
-          image = await createImageFromSvg(svgPath, 22);
-        } catch (e) {
-          console.log('SVG to tray conversion failed, will use fallback');
+      const svgPaths = [
+        path.join(__dirname, '..', 'theatermasks.fill.svg'),
+        path.join(process.resourcesPath, 'theatermasks.fill.svg'),
+      ];
+      
+      for (const svgPath of svgPaths) {
+        if (fs.existsSync(svgPath)) {
+          try {
+            image = await createImageFromSvg(svgPath, 22);
+            console.log('✅ Tray icon created from SVG:', svgPath);
+            break;
+          } catch (e) {
+            console.log('⚠️ SVG to tray conversion failed:', svgPath);
+          }
         }
       }
     }
 
     // Фолбэк: встроенная иконка (22x22) через base64
     if (!image) {
+      console.log('⚠️ Using fallback base64 tray icon');
       const fallbackBase64 =
         'iVBORw0KGgoAAAANSUhEUgAAABYAAAAWCAYAAADEtGw7AAAACXBIWXMAAAsSAAALEgHS3X78AAABF0lEQVQ4y+2VMU7CQBBF3yqC1cAE3kB2Qh0h0cJ0gk0t0Gg1sR2M3kQm4mZ9r8aC0m1t2gQp6j8Qm8f0m0bV9j8QbN8i8g0qH7wYI0b8eN0m1b1m4mRr2w5H8iI6Yw9i3yQkJk8m3tZ0sJk4mQyVa0J2i4r8y7v+g9i1wB4mB+oihqg1Gdq7kKfBf0qk8S2y2mIu2gqKXySx5xkYqjZQmKQ2c7r2r7JHVk7wz3m8c9gq5vJmS6wC0sXthxg2y9yJXbH3wJY0K1k0pQGxfyC0A2mZ4k7aZqk2QmQ4iQ7ADxZqfF5jY6YyG+S6mBz7s8Aq3q9xkC7m4wq3m6wH3bH3v6wA7nN3zX9h0H5wM3E2bD7A/Jp3zv9gJ3G7oG0m6Hk9s7bAAAAAElFTkSuQmCC';
       image = nativeImage.createFromDataURL(`data:image/png;base64,${fallbackBase64}`).resize({ width: 22, height: 22 });
