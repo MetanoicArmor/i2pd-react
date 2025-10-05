@@ -5,6 +5,7 @@
   "main": "public/electron.js",
   "homepage": "./",
   "scripts": {
+    "prebuild": "node pre-build-check.js",
     "start": "BROWSER=none react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
@@ -80,12 +81,17 @@
       "public/icon.png",
       "public/tray-icon.png",
       "Mac/i2pd",
+      "Lin/i2pd",
       "node_modules/**/*"
     ],
     "extraResources": [
       {
         "from": "Mac/i2pd",
         "to": "Mac/i2pd"
+      },
+      {
+        "from": "Lin/i2pd",
+        "to": "Lin/i2pd"
       }
     ],
     "mac": {

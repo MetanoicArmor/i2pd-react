@@ -557,6 +557,27 @@ async function getDaemonStats() {
 // Поиск исполняемого файла i2pd
 function findI2pdExecutable() {
   const platform = process.platform;
+  
+  // Пытаемся загрузить информацию о платформе из файла
+  let platformInfo = null;
+  try {
+    const platformInfoPath = path.join(__dirname, '..', 'platform-info.json');
+    if (fs.existsSync(platformInfoPath)) {
+      platformInfo = JSON.parse(fs.readFileSync(platformInfoPath, 'utf8'));
+    }
+  } catch (error) {
+    console.log('⚠️ Не удалось загрузить platform-info.json для исполняемого файла');
+  }
+  
+  // Если есть информация о платформе, проверяем указанный путь
+  if (platformInfo && platformInfo.executablePath) {
+    const fullExecutablePath = path.join(__dirname, '..', platformInfo.executablePath);
+    if (fs.existsSync(fullExecutablePath)) {
+      console.log(`⚙️ Используем исполняемый файл из platform-info.json: ${fullExecutablePath}`);
+      return fullExecutablePath;
+    }
+  }
+  
   let possiblePaths = [];
   
   if (platform === 'darwin') {
@@ -621,7 +642,8 @@ async function checkDaemonStatusInternal() {
     }
 
     return new Promise((resolve) => {
-      exec(`ps aux | grep 'i2pd.*--conf.*i2pd.conf' | grep -v grep | awk '{print $2}' | head -1`, (error, stdout) => {
+      const configPath = path.join(getI2pdConfigDir(), 'i2pd.conf');
+      exec(`ps aux | grep 'i2pd.*--conf.*${configPath}' | grep -v grep | awk '$1 == "'${process.env.USER}'" {print $2}' | head -1`, (error, stdout) => {
         if (error || !stdout.trim()) {
           resolve({ 
             success: true, 
@@ -745,7 +767,9 @@ registerHandler('restart-daemon', async () => {
     
     daemonProcess = spawn(executablePath, [`--conf=${configPath}`, '--daemon'], {
       detached: true,
-      stdio: 'ignore'
+      stdio: 'ignore',
+      uid: process.getuid ? process.getuid() : undefined,
+      gid: process.getgid ? process.getgid() : undefined
     });
     
     daemonProcess.unref();
@@ -779,7 +803,8 @@ registerHandler('start-daemon', async () => {
 
     // Дополнительная проверка через ps
     return new Promise((resolve) => {
-      exec(`ps aux | grep 'i2pd.*--conf.*i2pd.conf' | grep -v grep`, (error, stdout) => {
+      const configPath = path.join(getI2pdConfigDir(), 'i2pd.conf');
+      exec(`ps aux | grep 'i2pd.*--conf.*${configPath}' | grep -v grep | awk '$1 == "'${process.env.USER}'" {print $0}'`, (error, stdout) => {
         if (stdout.trim()) {
           console.log('Daemon process found via ps, skipping start');
           resolve({ success: false, error: 'Демон уже запущен' });
@@ -793,7 +818,9 @@ registerHandler('start-daemon', async () => {
 
         daemonProcess = spawn(executablePath, [`--conf=${configPath}`, '--daemon'], {
           detached: true,
-          stdio: 'ignore'
+          stdio: 'ignore',
+          uid: process.getuid ? process.getuid() : undefined,
+          gid: process.getgid ? process.getgid() : undefined
         });
 
         daemonProcess.unref();
@@ -831,7 +858,8 @@ async function startDaemonInternal() {
     }
 
     // Дополнительная проверка через ps
-    exec(`ps aux | grep 'i2pd.*--conf.*i2pd.conf' | grep -v grep`, (error, stdout) => {
+    const configPath = path.join(getI2pdConfigDir(), 'i2pd.conf');
+    exec(`ps aux | grep 'i2pd.*--conf.*${configPath}' | grep -v grep | awk '$1 == "'${process.env.USER}'" {print $0}'`, (error, stdout) => {
       if (stdout.trim()) {
         console.log('Daemon process found via ps, skipping start');
         return;
@@ -844,7 +872,9 @@ async function startDaemonInternal() {
 
       daemonProcess = spawn(executablePath, [`--conf=${configPath}`, '--daemon'], {
         detached: true,
-        stdio: 'ignore'
+        stdio: 'ignore',
+        uid: process.getuid ? process.getuid() : undefined,
+        gid: process.getgid ? process.getgid() : undefined
       });
 
       daemonProcess.unref();
@@ -868,19 +898,47 @@ async function startDaemonInternal() {
 async function stopDaemonInternal() {
   try {
     return await new Promise((resolve) => {
-      exec(`ps aux | grep 'i2pd.*--conf.*i2pd.conf' | grep -v grep | awk '{print $2}' | head -1`, (error, stdout) => {
+      // Устанавливаем таймаут на 10 секунд
+      const timeout = setTimeout(() => {
+        resolve({ success: false, error: 'Таймаут остановки демона' });
+      }, 10000);
+
+      const configPath = path.join(getI2pdConfigDir(), 'i2pd.conf');
+      exec(`ps aux | grep 'i2pd.*--conf.*${configPath}' | grep -v grep | awk '$1 == "'${process.env.USER}'" {print $2}' | head -1`, (error, stdout) => {
         if (error || !stdout.trim()) {
+          clearTimeout(timeout);
           resolve({ success: true, message: 'Демон не запущен' });
           return;
         }
         const pid = stdout.trim();
-        exec(`kill ${pid}`, (killError) => {
-          if (killError) {
-            resolve({ success: false, error: killError.message });
-          } else {
-            updateTrayStatus('Stopped');
-            resolve({ success: true, message: 'Демон остановлен' });
+        
+        // Проверяем, что процесс принадлежит текущему пользователю
+        exec(`ps -o user= -p ${pid}`, (userError, userOut) => {
+          if (userError || userOut.trim() !== process.env.USER) {
+            clearTimeout(timeout);
+            resolve({ success: false, error: 'Процесс принадлежит другому пользователю' });
+            return;
           }
+
+          // Сначала пробуем kill -9 (принудительная остановка)
+          exec(`kill -9 ${pid}`, (killError) => {
+            if (killError) {
+              // Если kill -9 не сработал, пробуем pkill только для текущего пользователя
+              exec(`pkill -9 -u ${process.env.USER} -f 'i2pd.*--conf.*${configPath}'`, (pkillError) => {
+                clearTimeout(timeout);
+                if (pkillError) {
+                  resolve({ success: false, error: `Не удалось остановить демон: ${killError.message}` });
+                } else {
+                  updateTrayStatus('Stopped');
+                  resolve({ success: true, message: 'Демон остановлен через pkill -9' });
+                }
+              });
+            } else {
+              clearTimeout(timeout);
+              updateTrayStatus('Stopped');
+              resolve({ success: true, message: 'Демон остановлен через kill -9' });
+            }
+          });
         });
       });
     });
@@ -1116,12 +1174,31 @@ registerHandler('set-window-theme', (_event, theme) => {
 function getI2pdConfigDir() {
   const homeDir = os.homedir();
   
+  // Пытаемся загрузить информацию о платформе из файла
+  let platformInfo = null;
+  try {
+    const platformInfoPath = path.join(__dirname, '..', 'platform-info.json');
+    if (fs.existsSync(platformInfoPath)) {
+      platformInfo = JSON.parse(fs.readFileSync(platformInfoPath, 'utf8'));
+    }
+  } catch (error) {
+    console.log('⚠️ Не удалось загрузить platform-info.json, используем стандартные пути');
+  }
+  
+  // Если есть информация о платформе, используем её
+  if (platformInfo && platformInfo.configPath) {
+    console.log(`📁 Используем путь из platform-info.json: ${platformInfo.configPath}`);
+    return platformInfo.configPath;
+  }
+  
+  // Иначе используем стандартную логику
   switch (process.platform) {
     case 'darwin': // macOS
       return path.join(homeDir, 'Library', 'Application Support', 'i2pd');
     case 'win32': // Windows
       return path.join(homeDir, 'AppData', 'Roaming', 'i2pd');
     case 'linux': // Linux
+      // Для Linux используем домашнюю директорию пользователя
       return path.join(homeDir, '.i2pd');
     default:
       return path.join(homeDir, '.i2pd');
@@ -1134,7 +1211,20 @@ async function initializeI2pdConfig() {
     const configDir = getI2pdConfigDir();
     const appDir = __dirname;
     
-    // Создаем директорию конфигов, если её нет
+    // Для Linux используем домашнюю директорию пользователя
+    if (process.platform === 'linux') {
+      console.log(`📁 Используем домашнюю директорию: ${configDir}`);
+      
+      // Создаем директорию конфигов, если её нет
+      if (!fs.existsSync(configDir)) {
+        fs.mkdirSync(configDir, { recursive: true });
+        console.log(`📁 Создана директория конфигов: ${configDir}`);
+      }
+      
+      return { success: true, configDir };
+    }
+    
+    // Для других платформ создаем директорию конфигов, если её нет
     if (!fs.existsSync(configDir)) {
       fs.mkdirSync(configDir, { recursive: true });
       console.log(`📁 Создана директория конфигов: ${configDir}`);
