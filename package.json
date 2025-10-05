@@ -19,7 +19,6 @@
     "dist-mac-arm64": "npm run build && electron-builder --mac --arm64",
     "dist-mac-x64": "npm run build && electron-builder --mac --x64",
     "dist-mac-universal": "npm run build && electron-builder --mac --universal",
-    "dist-win": "npm run build && electron-builder --win",
     "dist-linux": "npm run build && electron-builder --linux"
   },
   "keywords": [
@@ -98,10 +97,6 @@
       "category": "public.app-category.network",
       "target": ["dmg", "zip"],
       "icon": "public/icon-512.png"
-    },
-    "win": {
-      "target": "nsis",
-      "icon": "assets/icon.ico"
     },
     "linux": {
       "target": "AppImage",

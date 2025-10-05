@@ -593,18 +593,6 @@ function findI2pdExecutable() {
       '/opt/homebrew/bin/i2pd',
       '/usr/local/sbin/i2pd'
     ];
-  } else if (platform === 'win32') {
-    // Windows: ищем в папке Win
-    possiblePaths = [
-      // В собранном приложении (extraResources)
-      path.join(process.resourcesPath, 'Win', 'i2pd.exe'),
-      // В режиме разработки
-      path.join(__dirname, '..', 'Win', 'i2pd.exe'),
-      path.join(__dirname, 'Win', 'i2pd.exe'),
-      // Системные пути
-      'C:\\Program Files\\i2pd\\i2pd.exe',
-      'C:\\Program Files (x86)\\i2pd\\i2pd.exe'
-    ];
   } else {
     // Linux: ищем в папке Lin
     possiblePaths = [
@@ -1195,8 +1183,6 @@ function getI2pdConfigDir() {
   switch (process.platform) {
     case 'darwin': // macOS
       return path.join(homeDir, 'Library', 'Application Support', 'i2pd');
-    case 'win32': // Windows
-      return path.join(homeDir, 'AppData', 'Roaming', 'i2pd');
     case 'linux': // Linux
       // Для Linux используем домашнюю директорию пользователя
       return path.join(homeDir, '.i2pd');
