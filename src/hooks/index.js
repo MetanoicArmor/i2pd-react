@@ -1,6 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useApp } from '../context/AppContext';
+import {
+  useCallback,
+  useState,
+} from 'react';
+
 import { IPC_CHANNELS } from '../constants';
+import { useApp } from '../context/AppContext';
 
 // Хук для работы с Electron API
 export const useElectron = () => {
@@ -201,4 +205,3 @@ export { useSettings } from './useSettings';
 export { useI2pdManager } from './useI2pdManager';
 export { useNetworkMonitoring } from './useNetworkMonitoring';
 export { useNetworkInfo } from './useNetworkInfo';
-

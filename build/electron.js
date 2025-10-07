@@ -42,29 +42,7 @@ function createWindow() {
     icon: fs.existsSync(windowIconPath) ? windowIconPath : undefined
   });
 
-  // Устанавливаем иконку в Dock на macOS
-  try {
-    if (process.platform === 'darwin') {
-      const dockIconPath = path.join(__dirname, 'icon.png');
-      if (fs.existsSync(dockIconPath) && app.dock && typeof app.dock.setIcon === 'function') {
-        // Генерируем значок с закругленными углами в стиле macOS
-        createRoundedImageFromPng(dockIconPath, 256, Math.round(256 * 0.22))
-          .then((rounded) => {
-            if (rounded && !rounded.isEmpty()) {
-              app.dock.setIcon(rounded);
-            }
-          })
-          .catch(() => {
-            const dockImage = nativeImage.createFromPath(dockIconPath);
-            if (dockImage && !dockImage.isEmpty()) {
-              app.dock.setIcon(dockImage);
-            }
-          });
-      }
-    }
-  } catch (e) {
-    console.log('Failed to set Dock icon:', e.message);
-  }
+  // Linux: иконка устанавливается через window icon
 
   // URL для загрузки
   const startUrl = isDev ? 'http://localhost:3000' : `file://${path.join(__dirname, '../build/index.html')}`;
@@ -469,20 +447,10 @@ function updateTrayStatus(status) {
   updateDockVisibility();
 }
 
-// Обновление видимости в Dock на macOS
+// Обновление видимости (для Linux не требуется)
 function updateDockVisibility() {
-  if (process.platform === 'darwin' && app.dock) {
-    const store = new Store();
-    const hideFromDock = store.get('hideFromDock', false);
-    
-    if (hideFromDock) {
-      app.dock.hide();
-      console.log('🔄 Приложение скрыто из Dock');
-    } else {
-      app.dock.show();
-      console.log('🔄 Приложение показано в Dock');
-    }
-  }
+  // На Linux управление видимостью не требуется
+  console.log('🔄 Обновление видимости (Linux)');
 }
 
 // Получение и парсинг статистики из веб-консоли i2pd (порт 7070)
@@ -578,49 +546,20 @@ function findI2pdExecutable() {
     }
   }
   
-  let possiblePaths = [];
-  
-  if (platform === 'darwin') {
-    // macOS: ищем в папке Mac
-    possiblePaths = [
-      // В собранном приложении (extraResources)
-      path.join(process.resourcesPath, 'Mac', 'i2pd'),
-      // В режиме разработки
-      path.join(__dirname, '..', 'Mac', 'i2pd'),
-      path.join(__dirname, 'Mac', 'i2pd'),
-      // Системные пути
-      '/usr/local/bin/i2pd',
-      '/opt/homebrew/bin/i2pd',
-      '/usr/local/sbin/i2pd'
-    ];
-  } else if (platform === 'win32') {
-    // Windows: ищем в папке Win
-    possiblePaths = [
-      // В собранном приложении (extraResources)
-      path.join(process.resourcesPath, 'Win', 'i2pd.exe'),
-      // В режиме разработки
-      path.join(__dirname, '..', 'Win', 'i2pd.exe'),
-      path.join(__dirname, 'Win', 'i2pd.exe'),
-      // Системные пути
-      'C:\\Program Files\\i2pd\\i2pd.exe',
-      'C:\\Program Files (x86)\\i2pd\\i2pd.exe'
-    ];
-  } else {
-    // Linux: ищем в папке Lin
-    possiblePaths = [
-      // В собранном приложении (extraResources)
-      path.join(process.resourcesPath, 'Lin', 'i2pd'),
-      // В режиме разработки
-      path.join(__dirname, '..', 'Lin', 'i2pd'),
-      path.join(__dirname, 'Lin', 'i2pd'),
-      // Системные пути
-      '/usr/local/bin/i2pd',
-      '/usr/bin/i2pd',
-      '/usr/local/sbin/i2pd',
-      '/usr/sbin/i2pd',
-      path.join(process.env.HOME || '', '.local', 'bin', 'i2pd')
-    ];
-  }
+  // Linux: ищем в папке Lin
+  const possiblePaths = [
+    // В собранном приложении (extraResources)
+    path.join(process.resourcesPath, 'Lin', 'i2pd'),
+    // В режиме разработки
+    path.join(__dirname, '..', 'Lin', 'i2pd'),
+    path.join(__dirname, 'Lin', 'i2pd'),
+    // Системные пути
+    '/usr/local/bin/i2pd',
+    '/usr/bin/i2pd',
+    '/usr/local/sbin/i2pd',
+    '/usr/sbin/i2pd',
+    path.join(process.env.HOME || '', '.local', 'bin', 'i2pd')
+  ];
 
   for (const execPath of possiblePaths) {
     if (fs.existsSync(execPath)) {
@@ -1192,17 +1131,8 @@ function getI2pdConfigDir() {
   }
   
   // Иначе используем стандартную логику
-  switch (process.platform) {
-    case 'darwin': // macOS
-      return path.join(homeDir, 'Library', 'Application Support', 'i2pd');
-    case 'win32': // Windows
-      return path.join(homeDir, 'AppData', 'Roaming', 'i2pd');
-    case 'linux': // Linux
-      // Для Linux используем домашнюю директорию пользователя
-      return path.join(homeDir, '.i2pd');
-    default:
-      return path.join(homeDir, '.i2pd');
-  }
+  // Linux: используем домашнюю директорию пользователя
+  return path.join(homeDir, '.i2pd');
 }
 
 // Функция для инициализации конфигурационных файлов при первом запуске
