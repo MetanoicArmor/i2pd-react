@@ -31,6 +31,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'write-config-file',
       'write-settings-to-config',
       'set-window-zoom',
+      'get-window-zoom',
       'zoom-interface-2x',
       'reset-interface-zoom',
       'update-tray-settings',

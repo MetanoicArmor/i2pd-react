@@ -1,4 +1,7 @@
-import React from 'react';
+import React, {
+  useEffect,
+  useState,
+} from 'react';
 
 import {
   Info,
@@ -101,6 +104,49 @@ function Header({
   isRunning 
 }) {
   const { t } = useTranslation();
+  const [currentZoom, setCurrentZoom] = useState(1.0);
+  
+  // Синхронизация состояния масштаба при загрузке
+  useEffect(() => {
+    const syncZoomState = async () => {
+      try {
+        if (window.electronAPI) {
+          const result = await window.electronAPI.invoke('get-window-zoom');
+          if (result && result.success) {
+            setCurrentZoom(result.zoomFactor);
+            console.log(`🔍 Синхронизирован масштаб: ${result.zoomFactor}`);
+          }
+        }
+      } catch (error) {
+        console.error('❌ Ошибка синхронизации масштаба:', error);
+      }
+    };
+    
+    syncZoomState();
+  }, []);
+  
+  // Функция для переключения масштаба
+  const toggleZoom = async () => {
+    const newZoom = currentZoom === 1.0 ? 2.0 : 1.0;
+    console.log(`🔍 Переключаем масштаб с ${currentZoom} на ${newZoom}`);
+    
+    try {
+      if (window.electronAPI) {
+        const result = await window.electronAPI.invoke('set-window-zoom', newZoom);
+        console.log('🔍 Результат переключения масштаба:', result);
+        
+        if (result && result.success) {
+          // Используем значение из ответа для точной синхронизации
+          setCurrentZoom(result.zoomFactor || newZoom);
+          console.log(`✅ Масштаб успешно установлен: ${result.zoomFactor || newZoom}`);
+        } else {
+          console.error('❌ Ошибка установки масштаба:', result);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Ошибка при переключении масштаба:', error);
+    }
+  };
   
   return (
     <HeaderContainer>
@@ -134,35 +180,14 @@ function Header({
         </ControlButton>
         
         <ControlButton 
-          onClick={() => {
-            console.log('🔍 Увеличиваем интерфейс...');
-            if (window.electronAPI) {
-              // Используем встроенную функциональность Electron
-              window.electronAPI.invoke('set-window-zoom', 2.0).then(result => {
-                console.log('🔍 Результат увеличения:', result);
-              });
-            }
+          onClick={toggleZoom}
+          title={currentZoom === 1.0 ? "Увеличить интерфейс в 2 раза" : "Сбросить масштаб интерфейса"}
+          style={{ 
+            backgroundColor: currentZoom === 1.0 ? '#4CAF50' : '#FF9800', 
+            color: 'white' 
           }}
-          title="Увеличить интерфейс в 2 раза"
-          style={{ backgroundColor: '#4CAF50', color: 'white' }}
         >
-          <ZoomIn />
-        </ControlButton>
-        
-        <ControlButton 
-          onClick={() => {
-            console.log('🔍 Сбрасываем масштаб интерфейса...');
-            if (window.electronAPI) {
-              // Используем встроенную функциональность Electron
-              window.electronAPI.invoke('set-window-zoom', 1.0).then(result => {
-                console.log('🔍 Результат сброса масштаба:', result);
-              });
-            }
-          }}
-          title="Сбросить масштаб интерфейса"
-          style={{ backgroundColor: '#FF9800', color: 'white' }}
-        >
-          <ZoomOut />
+          {currentZoom === 1.0 ? <ZoomIn /> : <ZoomOut />}
         </ControlButton>
         
         <ControlButton 

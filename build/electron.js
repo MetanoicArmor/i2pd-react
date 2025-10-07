@@ -396,16 +396,42 @@ function updateTrayIcon(isRunning) {
   console.log('🎭 updateTrayIcon called with isRunning:', isRunning);
   
   // Определяем пути к иконкам
-  const theaterMasksPaths = [
-    path.join(process.cwd(), isRunning ? 'theatermasks.fill.png' : 'theatermasks.png'),
-    path.join(__dirname, isRunning ? 'theatermasks.fill.png' : 'theatermasks.png'),
-    path.join(__dirname, '..', isRunning ? 'theatermasks.fill.png' : 'theatermasks.png'),
+  const isAppImage = process.env.APPIMAGE !== undefined;
+  
+  // Выбираем иконку в зависимости от состояния
+  let iconName;
+  if (isRunning) {
+    iconName = 'theatermasks.fill.png'; // Запущенный демон
+  } else {
+    iconName = 'theatermasks.png'; // Остановленный демон
+  }
+  
+  const iconPaths = [
+    // Для AppImage
+    ...(isAppImage ? [
+      path.join(__dirname, iconName),
+      path.join(__dirname, '..', iconName),
+      path.join(process.resourcesPath, 'app', iconName),
+    ] : []),
+    // Для разработки
+    path.join(process.cwd(), iconName),
+    path.join(__dirname, iconName),
+    path.join(__dirname, '..', iconName),
+    // Дополнительные пути
+    path.join(process.cwd(), 'build', iconName),
+    path.join(__dirname, 'build', iconName),
+    // Fallback на tray-icon.png
+    path.join(__dirname, 'tray-icon.png'),
+    path.join(process.cwd(), 'tray-icon.png'),
   ];
   
   let iconLoaded = false;
   
+  console.log(`🔍 Ищем иконку "${iconName}" в ${iconPaths.length} путях:`);
+  iconPaths.forEach((p, i) => console.log(`  ${i + 1}. ${p} (exists: ${fs.existsSync(p)})`));
+  
   // Пытаемся загрузить иконку
-  for (const iconPath of theaterMasksPaths) {
+  for (const iconPath of iconPaths) {
     if (fs.existsSync(iconPath)) {
       try {
         const image = nativeImage.createFromPath(iconPath);
@@ -1536,12 +1562,29 @@ registerHandler('set-window-zoom', (event, zoomFactor) => {
       console.log(`🔍 mainWindow найден, применяем масштаб: ${zoomFactor}`);
       mainWindow.webContents.setZoomFactor(zoomFactor);
       console.log(`✅ Масштаб окна установлен: ${zoomFactor}`);
-      return { success: true };
+      return { success: true, zoomFactor: zoomFactor };
     }
     console.log(`❌ mainWindow не найден`);
     return { success: false, error: 'Main window not found' };
   } catch (error) {
     console.log(`❌ Ошибка установки масштаба: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+});
+
+// IPC: получение текущего масштаба окна
+registerHandler('get-window-zoom', () => {
+  console.log('🔍 get-window-zoom вызван');
+  try {
+    if (mainWindow) {
+      const currentZoom = mainWindow.webContents.getZoomFactor();
+      console.log(`🔍 Текущий масштаб окна: ${currentZoom}`);
+      return { success: true, zoomFactor: currentZoom };
+    }
+    console.log('❌ mainWindow не найден');
+    return { success: false, error: 'Main window not found' };
+  } catch (error) {
+    console.log(`❌ Ошибка получения масштаба: ${error.message}`);
     return { success: false, error: error.message };
   }
 });
