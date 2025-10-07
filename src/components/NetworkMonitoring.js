@@ -1,18 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import styled from 'styled-components';
-import { 
-  Download, 
-  Upload, 
-  Shield, 
-  Wifi, 
-  RefreshCw, 
+import React from 'react';
+
+import {
   Activity,
+  BarChart3,
   Clock,
-  Users,
+  Download,
+  RefreshCw,
+  Shield,
   TrendingUp,
-  BarChart3
+  Upload,
+  Users,
+  Wifi,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import styled from 'styled-components';
 
 // Стилизованные компоненты
 const Card = styled.div`
@@ -207,7 +208,7 @@ const NetworkMonitoring = ({
     netDbSize: 0,
     cpuUsage: 0,
     memoryUsage: 0,
-    bandwidthLimit: 'L',
+    bandwidthLimit: 'P',
     connections: 0,
     packetsReceived: 0,
     packetsSent: 0,
@@ -355,13 +356,6 @@ const NetworkMonitoring = ({
             <DetailedValue>{stats.memoryUsage}%</DetailedValue>
           </DetailedItem>
 
-          <DetailedItem>
-            <DetailedIcon color="#FF9500">
-              <TrendingUp size={16} />
-            </DetailedIcon>
-            <DetailedText>{t('Bandwidth')}</DetailedText>
-            <DetailedValue>{stats.bandwidthLimit}</DetailedValue>
-          </DetailedItem>
 
           <DetailedItem>
             <DetailedIcon color="#5856D6">
