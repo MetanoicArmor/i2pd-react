@@ -24,7 +24,7 @@ const HeaderContainer = styled.div`
 `;
 
 const Title = styled.h1`
-  font-size: 18px;
+  font-size: 28px;
   font-weight: 600;
   color: ${props => props.theme.colors.text};
   margin: 0;
