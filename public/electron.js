@@ -48,9 +48,9 @@ function t(key, lang = 'en') {
 // Получение языка из настроек
 function getLanguage() {
   try {
-    return store.get('language', 'en');
+    return store.get('language', 'ru'); // По умолчанию русский
   } catch (error) {
-    return 'en';
+    return 'ru'; // По умолчанию русский
   }
 }
 let daemonProcess = null;
