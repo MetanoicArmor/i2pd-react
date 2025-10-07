@@ -12,6 +12,47 @@ const store = new Store();
 // Переменные
 let mainWindow;
 let tray;
+
+// Простая функция перевода
+function t(key, lang = 'en') {
+  const translations = {
+    en: {
+      'Status: Running': 'Status: Running',
+      'Status: Stopped': 'Status: Stopped',
+      'Start daemon': 'Start daemon',
+      'Stop daemon': 'Stop daemon',
+      'Restart daemon': 'Restart daemon',
+      'Show window': 'Show window',
+      'Settings': 'Settings',
+      'Zoom interface 2x': 'Zoom interface 2x',
+      'Reset interface zoom': 'Reset interface zoom',
+      'Quit application': 'Quit application'
+    },
+    ru: {
+      'Status: Running': 'Статус: Запущен',
+      'Status: Stopped': 'Статус: Остановлен',
+      'Start daemon': 'Запустить daemon',
+      'Stop daemon': 'Остановить daemon',
+      'Restart daemon': 'Перезапустить daemon',
+      'Show window': 'Показать окно',
+      'Settings': 'Настройки',
+      'Zoom interface 2x': 'Увеличить интерфейс в 2 раза',
+      'Reset interface zoom': 'Сбросить масштаб интерфейса',
+      'Quit application': 'Выйти из приложения'
+    }
+  };
+  
+  return translations[lang]?.[key] || key;
+}
+
+// Получение языка из настроек
+function getLanguage() {
+  try {
+    return store.get('language', 'en');
+  } catch (error) {
+    return 'en';
+  }
+}
 let daemonProcess = null;
 let daemonPID = null;
 
@@ -467,7 +508,8 @@ function updateTrayIcon(isRunning) {
   }
   
   // Обновляем tooltip
-  tray.setToolTip(`I2P Daemon GUI - ${isRunning ? 'Запущен' : 'Остановлен'}`);
+  const lang = getLanguage();
+  tray.setToolTip(`I2P Daemon GUI - ${t(isRunning ? 'Status: Running' : 'Status: Stopped', lang)}`);
 }
 
 // IPC handler для тестирования иконок
@@ -502,14 +544,15 @@ function updateTrayStatus(status) {
   const startMinimized = store.get('startMinimized', false);
   const autoStartDaemon = store.get('autoStartDaemon', false);
   
+  const lang = getLanguage();
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: `Статус: ${isRunning ? 'Запущен' : 'Остановлен'}`,
+      label: t(`Status: ${isRunning ? 'Running' : 'Stopped'}`, lang),
       enabled: false
     },
     { type: 'separator' },
     {
-      label: 'Запустить daemon',
+      label: t('Start daemon', lang),
       type: 'checkbox',
       checked: isRunning,
       click: () => {
@@ -520,7 +563,7 @@ function updateTrayStatus(status) {
       }
     },
     {
-      label: 'Остановить daemon',
+      label: t('Stop daemon', lang),
       type: 'checkbox',
       checked: !isRunning,
       click: () => {
@@ -531,7 +574,7 @@ function updateTrayStatus(status) {
       }
     },
     {
-      label: 'Перезапустить daemon',
+      label: t('Restart daemon', lang),
       type: 'checkbox',
       checked: false,
       click: () => {
@@ -549,7 +592,7 @@ function updateTrayStatus(status) {
     },
     { type: 'separator' },
     {
-      label: 'Показать окно',
+      label: t('Show window', lang),
       click: () => {
         if (mainWindow) {
           mainWindow.show();
@@ -558,7 +601,7 @@ function updateTrayStatus(status) {
       }
     },
     {
-      label: 'Настройки',
+      label: t('Settings', lang),
       accelerator: 'CmdOrCtrl+,',
       click: () => {
         if (mainWindow) {
@@ -571,7 +614,7 @@ function updateTrayStatus(status) {
     },
     { type: 'separator' },
     {
-      label: 'Увеличить интерфейс в 2 раза',
+      label: t('Zoom interface 2x', lang),
       click: () => {
         console.log('🔍 Увеличиваем интерфейс из трея...');
         if (mainWindow) {
@@ -581,7 +624,7 @@ function updateTrayStatus(status) {
       }
     },
     {
-      label: 'Сбросить масштаб интерфейса',
+      label: t('Reset interface zoom', lang),
       click: () => {
         console.log('🔍 Сбрасываем масштаб из трея...');
         if (mainWindow) {
@@ -592,7 +635,7 @@ function updateTrayStatus(status) {
     },
     { type: 'separator' },
     {
-      label: 'Выйти из приложения',
+      label: t('Quit application', lang),
       click: async () => {
         console.log('🛑 Выход из приложения из трея...');
         // Останавливаем демон перед выходом

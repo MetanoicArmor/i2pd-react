@@ -1,6 +1,6 @@
 import i18n from 'i18next';
-import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
+import { initReactI18next } from 'react-i18next';
 
 // Переводы
 const resources = {
@@ -99,6 +99,15 @@ const resources = {
       "Status: Ready": "Status: Ready",
       "Status: Running": "Status: Running",
       "Status: Stopped": "Status: Stopped",
+      "Status: Running": "Status: Running",
+      "Status: Stopped": "Status: Stopped",
+      "Show window": "Show window",
+      "Settings": "Settings",
+      "Zoom interface 2x": "Zoom interface 2x",
+      "Reset interface zoom": "Reset interface zoom",
+      "Quit application": "Quit application",
+      "Double size interface": "Double size interface",
+      "Increase interface size by 2x for better visibility on high-resolution displays": "Increase interface size by 2x for better visibility on high-resolution displays",
       
       // Сообщения
       "Starting I2P daemon...": "Starting I2P daemon...",
@@ -414,6 +423,15 @@ const resources = {
       "Status: Ready": "Статус: Готов",
       "Status: Running": "Статус: Запущен",
       "Status: Stopped": "Статус: Остановлен",
+      "Status: Running": "Статус: Запущен",
+      "Status: Stopped": "Статус: Остановлен",
+      "Show window": "Показать окно",
+      "Settings": "Настройки",
+      "Zoom interface 2x": "Увеличить интерфейс в 2 раза",
+      "Reset interface zoom": "Сбросить масштаб интерфейса",
+      "Quit application": "Выйти из приложения",
+      "Double size interface": "Двойной размер интерфейса",
+      "Increase interface size by 2x for better visibility on high-resolution displays": "Увеличить размер интерфейса в 2 раза для лучшей видимости на дисплеях с высоким разрешением",
       
       // Сообщения
       "Starting I2P daemon...": "Запуск I2P daemon...",
