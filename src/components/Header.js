@@ -5,6 +5,8 @@ import {
   Minimize2,
   RefreshCw,
   Settings,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
@@ -129,6 +131,38 @@ function Header({
           title={t('About')}
         >
           <Info />
+        </ControlButton>
+        
+        <ControlButton 
+          onClick={() => {
+            console.log('🔍 Увеличиваем интерфейс...');
+            if (window.electronAPI) {
+              // Используем встроенную функциональность Electron
+              window.electronAPI.invoke('set-window-zoom', 2.0).then(result => {
+                console.log('🔍 Результат увеличения:', result);
+              });
+            }
+          }}
+          title="Увеличить интерфейс в 2 раза"
+          style={{ backgroundColor: '#4CAF50', color: 'white' }}
+        >
+          <ZoomIn />
+        </ControlButton>
+        
+        <ControlButton 
+          onClick={() => {
+            console.log('🔍 Сбрасываем масштаб интерфейса...');
+            if (window.electronAPI) {
+              // Используем встроенную функциональность Electron
+              window.electronAPI.invoke('set-window-zoom', 1.0).then(result => {
+                console.log('🔍 Результат сброса масштаба:', result);
+              });
+            }
+          }}
+          title="Сбросить масштаб интерфейса"
+          style={{ backgroundColor: '#FF9800', color: 'white' }}
+        >
+          <ZoomOut />
         </ControlButton>
         
         <ControlButton 

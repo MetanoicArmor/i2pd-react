@@ -545,6 +545,27 @@ function updateTrayStatus(status) {
     },
     { type: 'separator' },
     {
+      label: 'Увеличить интерфейс в 2 раза',
+      click: () => {
+        console.log('🔍 Увеличиваем интерфейс из трея...');
+        if (mainWindow) {
+          mainWindow.webContents.setZoomFactor(2.0);
+          console.log('✅ Интерфейс увеличен в 2 раза из трея');
+        }
+      }
+    },
+    {
+      label: 'Сбросить масштаб интерфейса',
+      click: () => {
+        console.log('🔍 Сбрасываем масштаб из трея...');
+        if (mainWindow) {
+          mainWindow.webContents.setZoomFactor(1.0);
+          console.log('✅ Масштаб сброшен из трея');
+        }
+      }
+    },
+    { type: 'separator' },
+    {
       label: 'Выйти из приложения',
       click: async () => {
         console.log('🛑 Выход из приложения из трея...');
@@ -1521,6 +1542,42 @@ registerHandler('set-window-zoom', (event, zoomFactor) => {
     return { success: false, error: 'Main window not found' };
   } catch (error) {
     console.log(`❌ Ошибка установки масштаба: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+});
+
+// IPC: увеличение интерфейса в 2 раза
+registerHandler('zoom-interface-2x', () => {
+  console.log('🔍 zoom-interface-2x вызван');
+  try {
+    if (mainWindow) {
+      console.log('🔍 mainWindow найден, применяем увеличение в 2 раза');
+      mainWindow.webContents.setZoomFactor(2.0);
+      console.log('✅ Интерфейс увеличен в 2 раза');
+      return { success: true };
+    }
+    console.log('❌ mainWindow не найден');
+    return { success: false, error: 'Main window not found' };
+  } catch (error) {
+    console.log(`❌ Ошибка увеличения интерфейса: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+});
+
+// IPC: сброс масштабирования интерфейса
+registerHandler('reset-interface-zoom', () => {
+  console.log('🔍 reset-interface-zoom вызван');
+  try {
+    if (mainWindow) {
+      console.log('🔍 mainWindow найден, сбрасываем масштаб');
+      mainWindow.webContents.setZoomFactor(1.0);
+      console.log('✅ Масштаб интерфейса сброшен');
+      return { success: true };
+    }
+    console.log('❌ mainWindow не найден');
+    return { success: false, error: 'Main window not found' };
+  } catch (error) {
+    console.log(`❌ Ошибка сброса масштаба: ${error.message}`);
     return { success: false, error: error.message };
   }
 });

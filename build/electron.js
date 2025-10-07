@@ -128,24 +128,38 @@ function createWindow() {
       event.preventDefault();
       mainWindow.hide();
       console.log('🔄 Окно свернуто в трей');
+      
+      // Показываем уведомление в трее для Linux/Windows
+      if (process.platform !== 'darwin' && tray) {
+        tray.displayBalloon({
+          title: 'I2P Daemon GUI',
+          content: 'Приложение свернуто в системный трей. Нажмите на иконку трея для восстановления окна.',
+          icon: path.join(__dirname, 'tray-icon.png')
+        });
+      }
     }
   });
 
   mainWindow.on('close', (event) => {
-    if (isDev) {
-      app.quit();
-    } else {
-      // Получаем настройки из store
-      const store = new Store();
-      const closeToTray = store.get('closeToTray', true);
+    // Получаем настройки из store
+    const store = new Store();
+    const closeToTray = store.get('closeToTray', false);
+    
+    if (closeToTray && tray) {
+      event.preventDefault();
+      mainWindow.hide();
+      console.log('🔄 Окно скрыто в трей при закрытии');
       
-      if (closeToTray && tray) {
-        event.preventDefault();
-        mainWindow.hide();
-        console.log('🔄 Окно скрыто в трей при закрытии');
-      } else {
-        app.quit();
+      // Показываем уведомление в трее для Linux/Windows
+      if (process.platform !== 'darwin' && tray) {
+        tray.displayBalloon({
+          title: 'I2P Daemon GUI',
+          content: 'Приложение скрыто в системный трей. Нажмите на иконку трея для восстановления окна.',
+          icon: path.join(__dirname, 'tray-icon.png')
+        });
       }
+    } else {
+      app.quit();
     }
   });
 
@@ -345,14 +359,122 @@ function createRoundedImageFromPng(pngPath, size = 256, radius = 56) {
   });
 }
 
+// Тестовая функция для переключения иконок
+let testIconCounter = 0;
+function testTrayIcons() {
+  if (!tray) return;
+  
+  testIconCounter = (testIconCounter + 1) % 2;
+  const isRed = testIconCounter === 0;
+  const iconPath = path.join(process.cwd(), isRed ? 'red-icon.png' : 'green-icon.png');
+  const label = isRed ? 'КРАСНАЯ' : 'ЗЕЛЕНАЯ';
+  
+  console.log(`🧪 ТЕСТ: Переключаем на ${label} иконку:`, iconPath);
+  
+  try {
+    if (fs.existsSync(iconPath)) {
+      const image = nativeImage.createFromPath(iconPath);
+      if (image && !image.isEmpty()) {
+        tray.setImage(image);
+        tray.setToolTip(`ТЕСТ - ${label}`);
+        console.log(`✅ ТЕСТ: Иконка установлена - ${label}`);
+      } else {
+        console.log(`❌ ТЕСТ: Иконка пустая - ${label}`);
+      }
+    } else {
+      console.log(`❌ ТЕСТ: Файл не найден - ${iconPath}`);
+    }
+  } catch (e) {
+    console.log(`❌ ТЕСТ: Ошибка загрузки - ${e.message}`);
+  }
+}
+
+// Обновление иконки трея в зависимости от статуса
+function updateTrayIcon(isRunning) {
+  if (!tray) return;
+  
+  console.log('🎭 updateTrayIcon called with isRunning:', isRunning);
+  
+  // Определяем пути к иконкам
+  const theaterMasksPaths = [
+    path.join(process.cwd(), isRunning ? 'theatermasks.fill.png' : 'theatermasks.png'),
+    path.join(__dirname, isRunning ? 'theatermasks.fill.png' : 'theatermasks.png'),
+    path.join(__dirname, '..', isRunning ? 'theatermasks.fill.png' : 'theatermasks.png'),
+  ];
+  
+  let iconLoaded = false;
+  
+  // Пытаемся загрузить иконку
+  for (const iconPath of theaterMasksPaths) {
+    if (fs.existsSync(iconPath)) {
+      try {
+        const image = nativeImage.createFromPath(iconPath);
+        if (image && !image.isEmpty()) {
+          tray.setImage(image);
+          console.log(`✅ Tray icon (${isRunning ? 'running' : 'stopped'}) loaded from:`, iconPath);
+          iconLoaded = true;
+          break;
+        }
+      } catch (e) {
+        console.log(`❌ Failed to load tray icon from:`, iconPath, e.message);
+      }
+    }
+  }
+  
+  // Если не удалось загрузить иконку, используем fallback
+  if (!iconLoaded) {
+    console.log(`🔍 Looking for ${isRunning ? 'running' : 'stopped'} icon:`, theaterMasksPaths[0]);
+    
+    // Пытаемся использовать тестовые иконки как fallback
+    const fallbackPath = path.join(process.cwd(), isRunning ? 'green-icon.png' : 'red-icon.png');
+    if (fs.existsSync(fallbackPath)) {
+      try {
+        const image = nativeImage.createFromPath(fallbackPath);
+        if (image && !image.isEmpty()) {
+          tray.setImage(image);
+          console.log(`✅ Tray icon (${isRunning ? 'running' : 'stopped'}) loaded from fallback:`, fallbackPath);
+        }
+      } catch (e) {
+        console.log(`❌ Failed to load fallback icon:`, fallbackPath, e.message);
+      }
+    }
+  }
+  
+  // Обновляем tooltip
+  tray.setToolTip(`I2P Daemon GUI - ${isRunning ? 'Запущен' : 'Остановлен'}`);
+}
+
+// IPC handler для тестирования иконок
+ipcMain.handle('test-tray-icons', () => {
+  console.log('🧪 IPC: test-tray-icons invoked');
+  testTrayIcons();
+  return { success: true, message: 'Иконки переключены' };
+});
+
 // Обновление статуса трея
 function updateTrayStatus(status) {
   if (!tray) {
-    console.log('Tray not initialized, skipping status update');
+    console.log('❌ Tray not initialized, skipping status update');
     return;
   }
   
-  const isRunning = status === 'Running';
+  console.log('🎭 updateTrayStatus called with status:', status);
+  
+  const isRunning = status === 'Running' || status === true;
+  console.log('🔍 Calculated isRunning:', isRunning);
+  
+  // Обновляем статус демона в store
+  const store = new Store();
+  store.set('daemonRunning', isRunning);
+  console.log('💾 Updated daemonRunning in store:', isRunning);
+  
+  // Обновляем иконку трея
+  console.log('🔄 Calling updateTrayIcon with isRunning:', isRunning);
+  updateTrayIcon(isRunning);
+  const minimizeToTray = store.get('minimizeToTray', true);
+  const closeToTray = store.get('closeToTray', false);
+  const startMinimized = store.get('startMinimized', false);
+  const autoStartDaemon = store.get('autoStartDaemon', false);
   
   const contextMenu = Menu.buildFromTemplate([
     {
@@ -373,6 +495,8 @@ function updateTrayStatus(status) {
     },
     {
       label: 'Остановить daemon',
+      type: 'checkbox',
+      checked: !isRunning,
       click: () => {
         if (isRunning) {
           // Останавливаем демон
@@ -382,6 +506,8 @@ function updateTrayStatus(status) {
     },
     {
       label: 'Перезапустить daemon',
+      type: 'checkbox',
+      checked: false,
       click: () => {
         // Перезапускаем демон
         if (isRunning) {
@@ -397,6 +523,15 @@ function updateTrayStatus(status) {
     },
     { type: 'separator' },
     {
+      label: 'Показать окно',
+      click: () => {
+        if (mainWindow) {
+          mainWindow.show();
+          mainWindow.focus();
+        }
+      }
+    },
+    {
       label: 'Настройки',
       accelerator: 'CmdOrCtrl+,',
       click: () => {
@@ -408,40 +543,59 @@ function updateTrayStatus(status) {
         }
       }
     },
+    { type: 'separator' },
     {
-      label: 'Веб-консоль',
+      label: 'Увеличить интерфейс в 2 раза',
       click: () => {
-        // Открываем веб-консоль i2pd
-        shell.openExternal('http://127.0.0.1:7070');
+        console.log('🔍 Увеличиваем интерфейс из трея...');
+        if (mainWindow) {
+          mainWindow.webContents.setZoomFactor(2.0);
+          console.log('✅ Интерфейс увеличен в 2 раза из трея');
+        }
       }
     },
     {
-      label: 'Показать окно',
+      label: 'Сбросить масштаб интерфейса',
       click: () => {
+        console.log('🔍 Сбрасываем масштаб из трея...');
         if (mainWindow) {
-          mainWindow.show();
-          mainWindow.focus();
+          mainWindow.webContents.setZoomFactor(1.0);
+          console.log('✅ Масштаб сброшен из трея');
         }
       }
     },
     { type: 'separator' },
     {
-      label: 'Свернуть в трей',
-      click: () => {
-        if (mainWindow) {
-          mainWindow.hide();
+      label: 'Выйти из приложения',
+      click: async () => {
+        console.log('🛑 Выход из приложения из трея...');
+        // Останавливаем демон перед выходом
+        if (isRunning) {
+          await stopDaemonInternal();
         }
-      }
-    },
-    {
-      label: 'Выйти',
-      click: () => {
-        app.quit();
+        // Принудительно завершаем приложение
+        app.exit(0);
       }
     }
   ]);
   
   tray.setContextMenu(contextMenu);
+  
+  // Начальная иконка будет установлена при первом вызове updateTrayStatus
+  
+  // Обработчик двойного клика по иконке трея
+  tray.on('double-click', () => {
+    if (mainWindow) {
+      if (mainWindow.isVisible()) {
+        mainWindow.hide();
+        console.log('🔄 Окно скрыто двойным кликом по трею');
+      } else {
+        mainWindow.show();
+        mainWindow.focus();
+        console.log('🔄 Окно показано двойным кликом по трею');
+      }
+    }
+  });
   
   // Настройка скрытия из Dock на macOS
   updateDockVisibility();
@@ -680,11 +834,14 @@ registerHandler('update-tray-status', (event, status) => {
   updateTrayStatus(status);
 });
 
-registerHandler('minimize-to-tray', () => {
-  if (mainWindow) {
-    mainWindow.hide();
-  }
+// IPC: обновление настроек трея
+registerHandler('update-tray-settings', () => {
+  // Получаем текущий статус демона
+  const store = new Store();
+  const isRunning = store.get('daemonRunning', false);
+  updateTrayStatus(isRunning ? 'Running' : 'Stopped');
 });
+
 
 // IPC: перезапуск демона атомарно
 registerHandler('restart-daemon', async () => {
@@ -1369,6 +1526,60 @@ registerHandler('write-settings-to-config', async (event, settings) => {
   const result = await writeSettingsToConfig(settings);
   console.log('🔧 IPC: write-settings-to-config результат:', result);
   return result;
+});
+
+// IPC: установка масштабирования окна
+registerHandler('set-window-zoom', (event, zoomFactor) => {
+  console.log(`🔍 set-window-zoom вызван с параметром: ${zoomFactor}`);
+  try {
+    if (mainWindow) {
+      console.log(`🔍 mainWindow найден, применяем масштаб: ${zoomFactor}`);
+      mainWindow.webContents.setZoomFactor(zoomFactor);
+      console.log(`✅ Масштаб окна установлен: ${zoomFactor}`);
+      return { success: true };
+    }
+    console.log(`❌ mainWindow не найден`);
+    return { success: false, error: 'Main window not found' };
+  } catch (error) {
+    console.log(`❌ Ошибка установки масштаба: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+});
+
+// IPC: увеличение интерфейса в 2 раза
+registerHandler('zoom-interface-2x', () => {
+  console.log('🔍 zoom-interface-2x вызван');
+  try {
+    if (mainWindow) {
+      console.log('🔍 mainWindow найден, применяем увеличение в 2 раза');
+      mainWindow.webContents.setZoomFactor(2.0);
+      console.log('✅ Интерфейс увеличен в 2 раза');
+      return { success: true };
+    }
+    console.log('❌ mainWindow не найден');
+    return { success: false, error: 'Main window not found' };
+  } catch (error) {
+    console.log(`❌ Ошибка увеличения интерфейса: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+});
+
+// IPC: сброс масштабирования интерфейса
+registerHandler('reset-interface-zoom', () => {
+  console.log('🔍 reset-interface-zoom вызван');
+  try {
+    if (mainWindow) {
+      console.log('🔍 mainWindow найден, сбрасываем масштаб');
+      mainWindow.webContents.setZoomFactor(1.0);
+      console.log('✅ Масштаб интерфейса сброшен');
+      return { success: true };
+    }
+    console.log('❌ mainWindow не найден');
+    return { success: false, error: 'Main window not found' };
+  } catch (error) {
+    console.log(`❌ Ошибка сброса масштаба: ${error.message}`);
+    return { success: false, error: error.message };
+  }
 });
 
 // IPC: корректное завершение приложения (с остановкой демона)
