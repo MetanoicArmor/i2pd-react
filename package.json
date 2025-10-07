@@ -29,7 +29,6 @@
     "electron",
     "cross-platform"
   ],
-  "author": "I2P Community",
   "license": "MIT",
   "dependencies": {
     "axios": "^1.6.0",
