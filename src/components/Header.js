@@ -1,7 +1,13 @@
 import React from 'react';
-import styled from 'styled-components';
-import { Settings, Info, RefreshCw, Minimize2 } from 'lucide-react';
+
+import {
+  Info,
+  Minimize2,
+  RefreshCw,
+  Settings,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import styled from 'styled-components';
 
 const HeaderContainer = styled.div`
   display: flex;
@@ -130,6 +136,19 @@ function Header({
           title={t('Minimize to tray')}
         >
           <Minimize2 />
+        </ControlButton>
+        
+        <ControlButton 
+          onClick={() => {
+            console.log('🧪 Тестируем иконки трея...');
+            window.electronAPI?.invoke('test-tray-icons').then(result => {
+              console.log('🧪 Результат теста иконок:', result);
+            });
+          }}
+          title="Тест иконок трея"
+          style={{ backgroundColor: '#ff6b6b', color: 'white' }}
+        >
+          🎭
         </ControlButton>
       </Controls>
     </HeaderContainer>

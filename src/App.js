@@ -1,21 +1,24 @@
-import React, { useState, useEffect, useRef } from 'react';
-import styled, { ThemeProvider, createGlobalStyle } from 'styled-components';
-import { useTranslation } from 'react-i18next';
-import i18n from './i18n';
+import React, {
+  useEffect,
+  useState,
+} from 'react';
 
+import { useTranslation } from 'react-i18next';
+import styled, {
+  createGlobalStyle,
+  ThemeProvider,
+} from 'styled-components';
+
+import NetworkMonitoring from './components/NetworkMonitoring';
 // Компоненты
 import SettingsModal from './components/SettingsModal';
-import NetworkMonitoring from './components/NetworkMonitoring';
-
+import { IPC_CHANNELS } from './constants';
 // Хуки
 import { useElectron } from './hooks/useElectron';
-import { useSettings } from './hooks/useSettings';
-import { useNetworkMonitoring } from './hooks/useNetworkMonitoring';
 import { useNetworkInfo } from './hooks/useNetworkInfo';
-
-// Константы
-import { DEFAULT_SETTINGS } from './constants/settings';
-import { IPC_CHANNELS } from './constants';
+import { useNetworkMonitoring } from './hooks/useNetworkMonitoring';
+import { useSettings } from './hooks/useSettings';
+import i18n from './i18n';
 
 // Простые темы
 const lightTheme = {
@@ -511,15 +514,22 @@ const App = () => {
         }
         
         // Запуск в свернутом виде если включен
+        console.log('🔍 Проверяем настройку startMinimized:', settings.startMinimized);
         if (settings.startMinimized) {
+          console.log('🔍 Запуск в свернутом виде включен, сворачиваем через 1 секунду...');
           setTimeout(async () => {
             try {
-              await electronAPI.invoke('minimize-to-tray');
+              console.log('🔍 Вызываем minimize-to-tray...');
+              const result = await electronAPI.invoke('minimize-to-tray');
+              console.log('🔍 Результат minimize-to-tray:', result);
               addLog('info', t('Application started minimized'));
             } catch (error) {
+              console.error('❌ Ошибка сворачивания при запуске:', error);
               addLog('error', `${t('Minimize error')}: ${error.message}`);
             }
           }, 1000);
+        } else {
+          console.log('🔍 Запуск в свернутом виде отключен');
         }
       }
     };
@@ -567,12 +577,22 @@ const App = () => {
       setShowSettings(true);
     };
 
+    const handleSettingsChanged = (changedSettings) => {
+      console.log('🔧 Настройки изменены из трея:', changedSettings);
+      // Обновляем настройки в React приложении
+      if (settingsHook && settingsHook.saveSettings) {
+        settingsHook.saveSettings(changedSettings);
+      }
+    };
+
     electronAPI.on('open-settings', handleOpenSettings);
+    electronAPI.on('settings-changed', handleSettingsChanged);
 
     return () => {
       electronAPI.removeListener('open-settings', handleOpenSettings);
+      electronAPI.removeListener('settings-changed', handleSettingsChanged);
     };
-  }, [isElectron, electronAPI]);
+  }, [isElectron, electronAPI, settingsHook]);
 
   return (
     <ThemeProvider theme={themes[currentThemeName]}>

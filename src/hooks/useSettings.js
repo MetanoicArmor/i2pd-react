@@ -1,5 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
+
 import { useTranslation } from 'react-i18next';
+
 import { DEFAULT_SETTINGS } from '../constants/settings';
 
 // Хук для управления настройками приложения
@@ -156,8 +162,7 @@ export const useSettings = (electronAPI) => {
       // Обновляем настройки трея если изменились соответствующие параметры
       const traySettingsChanged = (
         newSettings.minimizeToTray !== settings.minimizeToTray ||
-        newSettings.closeToTray !== settings.closeToTray ||
-        newSettings.hideFromDock !== settings.hideFromDock
+        newSettings.closeToTray !== settings.closeToTray
       );
       
       if (traySettingsChanged) {
@@ -169,8 +174,42 @@ export const useSettings = (electronAPI) => {
           console.error('❌ Ошибка обновления настроек трея:', error);
         }
       }
+
+      // Обновляем размер интерфейса если изменился соответствующий параметр
+      const doubleSizeChanged = newSettings.doubleSize !== settings.doubleSize;
+      
+      if (doubleSizeChanged) {
+        console.log('🔍 Применяем изменение размера интерфейса:', newSettings.doubleSize);
+        console.log('🔍 electronAPI доступен:', !!electronAPI);
+        try {
+          if (newSettings.doubleSize) {
+            // Включаем двойной размер (2.0x zoom)
+            console.log('🔍 Вызываем set-window-zoom с параметром 2.0');
+            const result = await electronAPI.invoke('set-window-zoom', 2.0);
+            console.log('🔍 Результат set-window-zoom:', result);
+            console.log('✅ Двойной размер интерфейса включен (2.0x zoom)');
+          } else {
+            // Отключаем двойной размер (стандартный масштаб)
+            console.log('🔍 Вызываем set-window-zoom с параметром 1.0');
+            const result = await electronAPI.invoke('set-window-zoom', 1.0);
+            console.log('🔍 Результат set-window-zoom:', result);
+            console.log('✅ Двойной размер интерфейса отключен (1.0x zoom)');
+          }
+        } catch (error) {
+          console.error('❌ Ошибка обновления размера интерфейса:', error);
+        }
+      }
       
       setSettings(newSettings);
+      
+      // Обновляем контекстное меню трея
+      try {
+        await electronAPI.invoke('update-tray-settings');
+        console.log('✅ Контекстное меню трея обновлено');
+      } catch (error) {
+        console.error('❌ Ошибка обновления трея:', error);
+      }
+      
       return true;
     } catch (error) {
       console.error('Ошибка сохранения настроек:', error);

@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, {
+  useEffect,
+  useState,
+} from 'react';
+
+import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
-import { useSettings } from '../hooks/useSettings';
-import { 
-  SETTINGS_CATEGORIES
-} from '../constants/settings';
+
+import { SETTINGS_CATEGORIES } from '../constants/settings';
 import { useTranslatedConstants } from '../utils/translatedConstants';
 import ConfigManagement from './ConfigManagement';
-import { useTranslation } from 'react-i18next';
-import { AlertCircle } from 'lucide-react';
 
 // Стилизованные компоненты
 const ModalOverlay = styled.div`
@@ -276,6 +277,9 @@ const SettingsModal = ({ isOpen, onClose, electronAPI, onSaved, settings, valida
     console.log('🔍 SettingsModal: settings:', settings);
     console.log('🔍 SettingsModal: electronAPI доступен:', !!electronAPI);
     console.log('🔍 SettingsModal: isSaving:', isSaving);
+    console.log('🔍 SettingsModal: doubleSize в localSettings:', localSettings.doubleSize);
+    console.log('🔍 SettingsModal: doubleSize в settings:', settings.doubleSize);
+    console.log('🔍 SettingsModal: onSaved функция:', !!onSaved);
     
     if (isSaving) {
       console.log('⚠️ SettingsModal: Уже выполняется сохранение, пропускаем');
@@ -287,7 +291,12 @@ const SettingsModal = ({ isOpen, onClose, electronAPI, onSaved, settings, valida
     
     try {
       console.log('✅ SettingsModal: Настройки успешно сохранены');
-      onSaved && onSaved(localSettings);
+      if (onSaved) {
+        console.log('🔍 SettingsModal: Вызываем onSaved с localSettings');
+        onSaved(localSettings);
+      } else {
+        console.log('❌ SettingsModal: onSaved функция не передана');
+      }
       onClose();
       
     } catch (error) {
@@ -403,15 +412,16 @@ const SettingsModal = ({ isOpen, onClose, electronAPI, onSaved, settings, valida
                 <CheckboxLabel>
                   <Checkbox
                     type="checkbox"
-                    checked={localSettings.hideFromDock || false}
-                    onChange={(e) => handleSettingChange('hideFromDock', e.target.checked)}
+                    checked={localSettings.doubleSize || false}
+                    onChange={(e) => handleSettingChange('doubleSize', e.target.checked)}
                   />
-                  {t('Hide from Dock (macOS)')}
+                  {t('Double size interface')}
                 </CheckboxLabel>
                 <Description>
-                  {t('App will not be displayed in Dock on macOS')}
+                  {t('Increase interface size by 2x for better visibility on high-resolution displays')}
                 </Description>
               </FormGroup>
+
             </>
           )}
 

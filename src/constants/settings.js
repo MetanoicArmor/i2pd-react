@@ -10,9 +10,9 @@ export const DEFAULT_SETTINGS = {
   // Общие настройки
   autoStartDaemon: false,
   startMinimized: false,
-  hideFromDock: false,
   minimizeToTray: true,
-  closeToTray: true,
+  closeToTray: false,
+  doubleSize: false,
   
   // Сетевые настройки
   httpPort: 4444,
